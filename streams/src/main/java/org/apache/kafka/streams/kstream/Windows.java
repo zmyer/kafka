@@ -28,7 +28,7 @@ public abstract class Windows<W extends Window> {
 
     private static final int DEFAULT_NUM_SEGMENTS = 3;
 
-    private static final long DEFAULT_MAINTAIN_DURATION = 24 * 60 * 60 * 1000L;   // one day
+    static final long DEFAULT_MAINTAIN_DURATION = 24 * 60 * 60 * 1000L;   // one day
 
     private long maintainDurationMs;
 
@@ -40,7 +40,8 @@ public abstract class Windows<W extends Window> {
     }
 
     /**
-     * Set the window maintain duration in milliseconds of system time.
+     * Set the window maintain duration in milliseconds of streams time.
+     * This retention time is a guaranteed <i>lower bound</i> for how long a window will be maintained.
      *
      * @return  itself
      */
@@ -63,9 +64,9 @@ public abstract class Windows<W extends Window> {
     }
 
     /**
-     * Return the window maintain duration in milliseconds of system time.
+     * Return the window maintain duration in milliseconds of streams time.
      *
-     * @return the window maintain duration in milliseconds of system time
+     * @return the window maintain duration in milliseconds of streams time
      */
     public long maintainMs() {
         return this.maintainDurationMs;

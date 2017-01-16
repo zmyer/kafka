@@ -373,6 +373,7 @@ public class WorkerTest extends ThreadedTest {
                 EasyMock.eq(TargetState.STARTED),
                 EasyMock.anyObject(JsonConverter.class),
                 EasyMock.anyObject(JsonConverter.class),
+                EasyMock.eq(TransformationChain.<SourceRecord>noOp()),
                 EasyMock.anyObject(KafkaProducer.class),
                 EasyMock.anyObject(OffsetStorageReader.class),
                 EasyMock.anyObject(OffsetStorageWriter.class),
@@ -425,20 +426,6 @@ public class WorkerTest extends ThreadedTest {
         EasyMock.expectLastCall();
 
         assertEquals(Collections.emptySet(), worker.taskIds());
-
-        assertFalse(worker.stopAndAwaitTask(TASK_ID));
-    }
-
-    @Test
-    public void testStopInvalidTask() {
-        expectStartStorage();
-
-        PowerMock.replayAll();
-
-        worker = new Worker(WORKER_ID, new MockTime(), connectorFactory, config, offsetBackingStore);
-        worker.start();
-
-        assertFalse(worker.stopAndAwaitTask(TASK_ID));
     }
 
     @Test
@@ -460,6 +447,7 @@ public class WorkerTest extends ThreadedTest {
                 EasyMock.eq(TargetState.STARTED),
                 EasyMock.anyObject(JsonConverter.class),
                 EasyMock.anyObject(JsonConverter.class),
+                EasyMock.eq(TransformationChain.<SourceRecord>noOp()),
                 EasyMock.anyObject(KafkaProducer.class),
                 EasyMock.anyObject(OffsetStorageReader.class),
                 EasyMock.anyObject(OffsetStorageWriter.class),
@@ -514,6 +502,7 @@ public class WorkerTest extends ThreadedTest {
                 EasyMock.eq(TargetState.STARTED),
                 EasyMock.capture(keyConverter),
                 EasyMock.capture(valueConverter),
+                EasyMock.eq(TransformationChain.<SourceRecord>noOp()),
                 EasyMock.anyObject(KafkaProducer.class),
                 EasyMock.anyObject(OffsetStorageReader.class),
                 EasyMock.anyObject(OffsetStorageWriter.class),

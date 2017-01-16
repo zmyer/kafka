@@ -24,18 +24,17 @@ import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueStore;
-import org.apache.kafka.streams.state.internals.CachedStateStore;
 
 public class KTableAggregate<K, V, T> implements KTableProcessorSupplier<K, V, T> {
 
     private final String storeName;
     private final Initializer<T> initializer;
-    private final Aggregator<K, V, T> add;
-    private final Aggregator<K, V, T> remove;
+    private final Aggregator<? super K, ? super V, T> add;
+    private final Aggregator<? super K, ? super V, T> remove;
 
     private boolean sendOldValues = false;
 
-    public KTableAggregate(String storeName, Initializer<T> initializer, Aggregator<K, V, T> add, Aggregator<K, V, T> remove) {
+    public KTableAggregate(String storeName, Initializer<T> initializer, Aggregator<? super K, ? super V, T> add, Aggregator<? super K, ? super V, T> remove) {
         this.storeName = storeName;
         this.initializer = initializer;
         this.add = add;
@@ -55,13 +54,14 @@ public class KTableAggregate<K, V, T> implements KTableProcessorSupplier<K, V, T
     private class KTableAggregateProcessor extends AbstractProcessor<K, Change<V>> {
 
         private KeyValueStore<K, T> store;
+        private TupleForwarder<K, T> tupleForwarder;
 
         @SuppressWarnings("unchecked")
         @Override
         public void init(final ProcessorContext context) {
             super.init(context);
             store = (KeyValueStore<K, T>) context.getStateStore(storeName);
-            ((CachedStateStore) store).setFlushListener(new ForwardingCacheFlushListener<K, V>(context, sendOldValues));
+            tupleForwarder = new TupleForwarder<>(store, context, new ForwardingCacheFlushListener<K, V>(context, sendOldValues), sendOldValues);
         }
 
         /**
@@ -92,6 +92,7 @@ public class KTableAggregate<K, V, T> implements KTableProcessorSupplier<K, V, T
 
             // update the store with the new value
             store.put(key, newAgg);
+            tupleForwarder.maybeForward(key, newAgg, oldAgg);
         }
 
     }

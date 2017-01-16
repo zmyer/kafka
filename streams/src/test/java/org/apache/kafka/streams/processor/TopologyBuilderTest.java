@@ -156,7 +156,7 @@ public class TopologyBuilderTest {
         builder.addSource("source-3", "topic-3");
         builder.addInternalTopic("topic-3");
 
-        Set<String> expected = new HashSet<String>();
+        Set<String> expected = new HashSet<>();
         expected.add("topic-1");
         expected.add("topic-2");
         expected.add("X-topic-3");
@@ -184,7 +184,7 @@ public class TopologyBuilderTest {
     @Test
     public void testSubscribeTopicNameAndPattern() {
         final TopologyBuilder builder = new TopologyBuilder();
-        Pattern expectedPattern = Pattern.compile(".*-\\d|topic-foo|topic-bar");
+        Pattern expectedPattern = Pattern.compile("topic-foo|topic-bar|.*-\\d");
         builder.addSource("source-1", "topic-foo", "topic-bar");
         builder.addSource("source-2", Pattern.compile(".*-\\d"));
         assertEquals(expectedPattern.pattern(), builder.sourceTopicPattern().pattern());
@@ -242,11 +242,11 @@ public class TopologyBuilderTest {
         StateStoreSupplier supplier = new MockStateStoreSupplier("store-1", false);
         builder.addStateStore(supplier);
         builder.setApplicationId("X");
+        builder.addSource("source-1", "topic-1");
+        builder.addProcessor("processor-1", new MockProcessorSupplier(), "source-1");
 
         assertEquals(0, builder.build(null).stateStores().size());
 
-        builder.addSource("source-1", "topic-1");
-        builder.addProcessor("processor-1", new MockProcessorSupplier(), "source-1");
         builder.connectProcessorAndStateStores("processor-1", "store-1");
 
         List<StateStore> suppliers = builder.build(null).stateStores();
@@ -516,7 +516,7 @@ public class TopologyBuilderTest {
         builder.addInternalTopic("foo");
         builder.addSource("source", "foo");
         final TopicsInfo topicsInfo = builder.topicGroups().values().iterator().next();
-        final InternalTopicConfig topicConfig = topicsInfo.interSourceTopics.get("appId-foo");
+        final InternalTopicConfig topicConfig = topicsInfo.repartitionSourceTopics.get("appId-foo");
         final Properties properties = topicConfig.toProperties(0);
         assertEquals("appId-foo", topicConfig.name());
         assertEquals("delete", properties.getProperty(InternalTopicManager.CLEANUP_POLICY_PROP));
@@ -547,7 +547,6 @@ public class TopologyBuilderTest {
 
             final ProcessorTopologyTestDriver driver = new ProcessorTopologyTestDriver(streamsConfig, builder, LocalMockProcessorSupplier.STORE_NAME);
             driver.process("topic", null, null);
-
         } catch (final StreamsException e) {
             final Throwable cause = e.getCause();
             if (cause != null

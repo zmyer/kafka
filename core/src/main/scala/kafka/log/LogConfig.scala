@@ -234,6 +234,8 @@ object LogConfig {
         case _ => super.getConfigValue(key, headerName)
       }
     }
+
+    def serverConfigName(configName: String): Option[String] = serverDefaultConfigNames.get(configName)
   }
 
   private val configDef: LogConfigDef = {
@@ -299,6 +301,8 @@ object LogConfig {
 
   def configNames: Seq[String] = configDef.names.asScala.toSeq.sorted
 
+  def serverConfigName(configName: String): Option[String] = configDef.serverConfigName(configName)
+
   /**
    * Create a log config instance using the given properties and defaults
    */
@@ -320,11 +324,22 @@ object LogConfig {
   }
 
   /**
+    * Check that the property values are valid relative to each other
+    */
+  def validateValues(props: Properties) {
+    val segmentBytes = if (props.getProperty(SegmentBytesProp) == null) Defaults.SegmentSize else props.getProperty(SegmentBytesProp).toLong
+    val retentionBytes = if (props.getProperty(RetentionBytesProp) == null) Defaults.RetentionSize else props.getProperty(RetentionBytesProp).toLong
+    if (segmentBytes > retentionBytes && retentionBytes != -1)
+      throw new InvalidConfigurationException(s"segment.bytes ${segmentBytes} is not less than or equal to retention.bytes ${retentionBytes}")
+  }
+
+  /**
    * Check that the given properties contain only valid log config names and that all values can be parsed and are valid
    */
   def validate(props: Properties) {
     validateNames(props)
     configDef.parse(props)
+    validateValues(props)
   }
 
 }

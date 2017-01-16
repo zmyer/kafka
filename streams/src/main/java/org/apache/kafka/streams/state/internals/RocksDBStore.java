@@ -41,8 +41,6 @@ import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
 import org.rocksdb.WriteBatch;
 import org.rocksdb.WriteOptions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Comparator;
@@ -66,7 +64,6 @@ import java.util.Set;
  */
 public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
 
-    private static final Logger log = LoggerFactory.getLogger(RocksDBStore.class);
     private static final int TTL_NOT_USED = -1;
 
     // TODO: these values should be configurable
@@ -98,7 +95,6 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
     private boolean loggingEnabled = false;
 
     private StoreChangeLogger<Bytes, byte[]> changeLogger;
-    private StoreChangeLogger.ValueGetter<Bytes, byte[]> getter;
 
     protected volatile boolean open = false;
 
@@ -133,6 +129,7 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
         options.setCreateIfMissing(true);
         options.setErrorIfExists(false);
 
+
         wOptions = new WriteOptions();
         wOptions.setDisableWAL(true);
 
@@ -165,13 +162,6 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
         this.changeLogger = this.loggingEnabled ? new StoreChangeLogger<>(name, context, WindowStoreUtils.INNER_SERDES) : null;
         // value getter should always read directly from rocksDB
         // since it is only for values that are already flushed
-        this.getter = new StoreChangeLogger.ValueGetter<Bytes, byte[]>() {
-            @Override
-            public byte[] get(Bytes key) {
-                return getInternal(key.get());
-            }
-        };
-
         context.register(root, loggingEnabled, new StateRestoreCallback() {
 
             @Override
@@ -247,14 +237,8 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
         putInternal(rawKey, rawValue);
 
         if (loggingEnabled) {
-            changeLogger.add(Bytes.wrap(rawKey));
-            changeLogger.maybeLogChange(this.getter);
+            changeLogger.logChange(Bytes.wrap(rawKey), rawValue);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    synchronized void writeToStore(K key, V value) {
-        putInternal(serdes.rawKey(key), serdes.rawValue(value));
     }
 
     @Override
@@ -269,7 +253,7 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
     private void putInternal(byte[] rawKey, byte[] rawValue) {
         if (rawValue == null) {
             try {
-                db.remove(wOptions, rawKey);
+                db.delete(wOptions, rawKey);
             } catch (RocksDBException e) {
                 throw new ProcessorStateException("Error while removing key " + serdes.keyFrom(rawKey) +
                         " from store " + this.name, e);
@@ -290,18 +274,16 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
             for (KeyValue<K, V> entry : entries) {
                 final byte[] rawKey = serdes.rawKey(entry.key);
                 if (entry.value == null) {
-                    db.remove(rawKey);
+                    db.delete(rawKey);
                 } else {
-                    batch.put(rawKey, serdes.rawValue(entry.value));
+                    final byte[] value = serdes.rawValue(entry.value);
+                    batch.put(rawKey, value);
                     if (loggingEnabled) {
-                        changeLogger.add(Bytes.wrap(rawKey));
+                        changeLogger.logChange(Bytes.wrap(rawKey), value);
                     }
                 }
             }
             db.write(wOptions, batch);
-            if (loggingEnabled) {
-                changeLogger.maybeLogChange(getter);
-            }
         } catch (RocksDBException e) {
             throw new ProcessorStateException("Error while batch writing to store " + this.name, e);
         }
@@ -370,9 +352,6 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
     public synchronized void flush() {
         if (db == null) {
             return;
-        }
-        if (loggingEnabled) {
-            changeLogger.logChange(getter);
         }
         // flush RocksDB
         flushInternal();
@@ -466,6 +445,15 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
             open = false;
             openIterators.remove(this);
             iter.close();
+        }
+
+        @Override
+        public K peekNextKey() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            return serdes.keyFrom(iter.key());
+
         }
 
     }

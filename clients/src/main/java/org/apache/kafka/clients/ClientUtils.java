@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.network.ChannelBuilders;
 import org.apache.kafka.common.network.LoginType;
-import org.apache.kafka.common.network.Mode;
 import org.apache.kafka.common.protocol.SecurityProtocol;
 import org.apache.kafka.common.network.ChannelBuilder;
 import org.apache.kafka.common.config.ConfigException;
@@ -36,7 +35,7 @@ public class ClientUtils {
     private static final Logger log = LoggerFactory.getLogger(ClientUtils.class);
 
     public static List<InetSocketAddress> parseAndValidateAddresses(List<String> urls) {
-        List<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
+        List<InetSocketAddress> addresses = new ArrayList<>();
         for (String url : urls) {
             if (url != null && !url.isEmpty()) {
                 try {
@@ -82,7 +81,6 @@ public class ClientUtils {
         if (!SecurityProtocol.nonTestingValues().contains(securityProtocol))
             throw new ConfigException("Invalid SecurityProtocol " + securityProtocol);
         String clientSaslMechanism = (String) configs.get(SaslConfigs.SASL_MECHANISM);
-        return ChannelBuilders.create(securityProtocol, Mode.CLIENT, LoginType.CLIENT, configs, clientSaslMechanism, true);
+        return ChannelBuilders.clientChannelBuilder(securityProtocol, LoginType.CLIENT, configs, clientSaslMechanism, true);
     }
-
 }

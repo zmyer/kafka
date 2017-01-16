@@ -25,7 +25,7 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 
 class KTableKTableOuterJoin<K, R, V1, V2> extends KTableKTableAbstractJoin<K, R, V1, V2> {
 
-    KTableKTableOuterJoin(KTableImpl<K, ?, V1> table1, KTableImpl<K, ?, V2> table2, ValueJoiner<V1, V2, R> joiner) {
+    KTableKTableOuterJoin(KTableImpl<K, ?, V1> table1, KTableImpl<K, ?, V2> table2, ValueJoiner<? super V1, ? super V2, ? extends R> joiner) {
         super(table1, table2, joiner);
     }
 
@@ -69,21 +69,25 @@ class KTableKTableOuterJoin<K, R, V1, V2> extends KTableKTableAbstractJoin<K, R,
          * @throws StreamsException if key is null
          */
         @Override
-        public void process(K key, Change<V1> change) {
+        public void process(final K key, final Change<V1> change) {
             // the keys should never be null
             if (key == null)
                 throw new StreamsException("Record key for KTable outer-join operator should not be null.");
 
             R newValue = null;
             R oldValue = null;
-            V2 value2 = valueGetter.get(key);
 
-            if (change.newValue != null || value2 != null)
+            final V2 value2 = valueGetter.get(key);
+            if (value2 == null && change.newValue == null && change.oldValue == null) {
+                return;
+            }
+
+            if (value2 != null || change.newValue != null) {
                 newValue = joiner.apply(change.newValue, value2);
+            }
 
-            if (sendOldValues) {
-                if (change.oldValue != null || value2 != null)
-                    oldValue = joiner.apply(change.oldValue, value2);
+            if (sendOldValues && (value2 != null || change.oldValue != null)) {
+                oldValue = joiner.apply(change.oldValue, value2);
             }
 
             context().forward(key, new Change<>(newValue, oldValue));

@@ -45,7 +45,7 @@ import java.util.TreeMap;
  *
  * @see org.apache.kafka.streams.state.Stores#create(String)
  */
-public class InMemoryKeyValueStoreSupplier<K, V> extends AbstractStoreSupplier<K, V> {
+public class InMemoryKeyValueStoreSupplier<K, V> extends AbstractStoreSupplier<K, V, KeyValueStore> {
 
 
     public InMemoryKeyValueStoreSupplier(String name, Serde<K> keySerde, Serde<V> valueSerde, boolean logged, Map<String, String> logConfig) {
@@ -56,7 +56,7 @@ public class InMemoryKeyValueStoreSupplier<K, V> extends AbstractStoreSupplier<K
         super(name, keySerde, valueSerde, time, logged, logConfig);
     }
 
-    public StateStore get() {
+    public KeyValueStore get() {
         MemoryStore<K, V> store = new MemoryStore<>(name, keySerde, valueSerde);
 
         return new MeteredKeyValueStore<>(logged ? store.enableLogging() : store, "in-memory-state", time);
@@ -155,13 +155,13 @@ public class InMemoryKeyValueStoreSupplier<K, V> extends AbstractStoreSupplier<K
 
         @Override
         public synchronized KeyValueIterator<K, V> range(K from, K to) {
-            return new MemoryStoreIterator<>(this.map.subMap(from, true, to, false).entrySet().iterator());
+            return new DelegatingPeekingKeyValueIterator<>(name, new MemoryStoreIterator<>(this.map.subMap(from, true, to, false).entrySet().iterator()));
         }
 
         @Override
         public synchronized KeyValueIterator<K, V> all() {
             final TreeMap<K, V> copy = new TreeMap<>(this.map);
-            return new MemoryStoreIterator<>(copy.entrySet().iterator());
+            return new DelegatingPeekingKeyValueIterator<>(name, new MemoryStoreIterator<>(copy.entrySet().iterator()));
         }
 
         @Override
@@ -204,6 +204,11 @@ public class InMemoryKeyValueStoreSupplier<K, V> extends AbstractStoreSupplier<K
 
             @Override
             public void close() {
+            }
+
+            @Override
+            public K peekNextKey() {
+                throw new UnsupportedOperationException("peekNextKey not supported on MemoryStoreIterator");
             }
 
         }

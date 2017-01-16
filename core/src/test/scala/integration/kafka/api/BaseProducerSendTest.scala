@@ -20,21 +20,21 @@ package kafka.api
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
+import collection.JavaConverters._
 import kafka.admin.AdminUtils
-import kafka.consumer.SimpleConsumer
 import kafka.integration.KafkaServerTestHarness
 import kafka.log.LogConfig
-import kafka.message.Message
 import kafka.server.KafkaConfig
 import kafka.utils.TestUtils
-import kafka.utils.TestUtils._
+import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.clients.producer._
-import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.{KafkaException, TopicPartition}
+import org.apache.kafka.common.protocol.SecurityProtocol
 import org.apache.kafka.common.record.TimestampType
 import org.junit.Assert._
 import org.junit.{After, Before, Test}
 
-import scala.collection.mutable.Buffer
+import scala.collection.mutable.{ArrayBuffer, Buffer}
 
 abstract class BaseProducerSendTest extends KafkaServerTestHarness {
 
@@ -46,8 +46,7 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
       trustStoreFile = trustStoreFile, saslProperties = saslProperties).map(KafkaConfig.fromProps(_, overridingProps))
   }
 
-  private var consumer1: SimpleConsumer = null
-  private var consumer2: SimpleConsumer = null
+  private var consumer: KafkaConsumer[Array[Byte], Array[Byte]] = _
   private val producers = Buffer[KafkaProducer[Array[Byte], Array[Byte]]]()
 
   protected val topic = "topic"
@@ -56,16 +55,12 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
   @Before
   override def setUp() {
     super.setUp()
-
-    // TODO: we need to migrate to new consumers when 0.9 is final
-    consumer1 = new SimpleConsumer("localhost", servers.head.boundPort(), 100, 1024 * 1024, "")
-    consumer2 = new SimpleConsumer("localhost", servers(1).boundPort(), 100, 1024 * 1024, "")
+    consumer = TestUtils.createNewConsumer(TestUtils.getBrokerListStrFromServers(servers), securityProtocol = SecurityProtocol.PLAINTEXT)
   }
 
   @After
   override def tearDown() {
-    consumer1.close()
-    consumer2.close()
+    consumer.close()
     // Ensure that all producers are closed since unclosed producers impact other tests when Kafka server ports are reused
     producers.foreach(_.close())
 
@@ -81,6 +76,15 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
   protected def registerProducer(producer: KafkaProducer[Array[Byte], Array[Byte]]): KafkaProducer[Array[Byte], Array[Byte]] = {
     producers += producer
     producer
+  }
+
+  private def pollUntilNumRecords(numRecords: Int) : Seq[ConsumerRecord[Array[Byte], Array[Byte]]] = {
+    val records = new ArrayBuffer[ConsumerRecord[Array[Byte], Array[Byte]]]()
+    TestUtils.waitUntilTrue(() => {
+      records ++= consumer.poll(50).asScala
+      records.size == numRecords
+    }, s"Consumed ${records.size} records until timeout, but expected $numRecords records.")
+    records
   }
 
   /**
@@ -142,12 +146,11 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
         producer.send(record4, callback)
         fail("Should not allow sending a record without topic")
       } catch {
-        case iae: IllegalArgumentException => // this is ok
-        case e: Throwable => fail("Only expecting IllegalArgumentException", e)
+        case _: IllegalArgumentException => // this is ok
       }
 
       // non-blocking send a list of records
-      for (i <- 1 to numRecords)
+      for (_ <- 1 to numRecords)
         producer.send(record0, callback)
 
       // check that all messages have been acked via offset
@@ -234,7 +237,7 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
 
       // non-blocking send a list of records
       val record0 = new ProducerRecord[Array[Byte], Array[Byte]](topic, null, "key".getBytes, "value".getBytes)
-      for (i <- 1 to numRecords)
+      for (_ <- 1 to numRecords)
         producer.send(record0)
       val response0 = producer.send(record0)
 
@@ -261,8 +264,7 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
     val producer = createProducer(brokerList)
 
     try {
-      // create topic
-      val leaders = TestUtils.createTopic(zkUtils, topic, 2, 2, servers)
+      TestUtils.createTopic(zkUtils, topic, 2, 2, servers)
       val partition = 1
 
       val now = System.currentTimeMillis()
@@ -277,21 +279,20 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
         assertEquals(partition, recordMetadata.partition)
       }
 
-      val leader1 = leaders(partition)
-      // make sure the fetched messages also respect the partitioning and ordering
-      val fetchResponse1 = if (leader1.get == configs.head.brokerId) {
-        consumer1.fetch(new FetchRequestBuilder().addFetch(topic, partition, 0, Int.MaxValue).build())
-      } else {
-        consumer2.fetch(new FetchRequestBuilder().addFetch(topic, partition, 0, Int.MaxValue).build())
-      }
-      val messageSet1 = fetchResponse1.messageSet(topic, partition).iterator.toBuffer
-      assertEquals("Should have fetched " + numRecords + " messages", numRecords, messageSet1.size)
+      consumer.assign(List(new TopicPartition(topic, partition)).asJava)
 
-      // TODO: also check topic and partition after they are added in the return messageSet
-      for (i <- 0 until numRecords) {
-        assertEquals(new Message(bytes = ("value" + (i + 1)).getBytes, now, Message.MagicValue_V1), messageSet1(i).message)
-        assertEquals(i.toLong, messageSet1(i).offset)
+      // make sure the fetched messages also respect the partitioning and ordering
+      val records = pollUntilNumRecords(numRecords)
+
+      records.zipWithIndex.foreach { case (record, i) =>
+        assertEquals(topic, record.topic)
+        assertEquals(partition, record.partition)
+        assertEquals(i.toLong, record.offset)
+        assertNull(record.key)
+        assertEquals(s"value${i + 1}", new String(record.value))
+        assertEquals(now, record.timestamp)
       }
+
     } finally {
       producer.close()
     }
@@ -328,8 +329,7 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
       producer.send(new ProducerRecord(topic, partition1, null, "value".getBytes))
       fail("Should not allow sending a record to a partition not present in the metadata")
     } catch {
-      case ke: KafkaException => // this is ok
-      case e: Throwable => fail("Only expecting KafkaException", e)
+      case _: KafkaException => // this is ok
     }
 
     AdminUtils.addPartitions(zkUtils, topic, 2)
@@ -370,8 +370,8 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
     try {
       TestUtils.createTopic(zkUtils, topic, 2, 2, servers)
       val record = new ProducerRecord[Array[Byte], Array[Byte]](topic, "value".getBytes)
-      for (i <- 0 until 50) {
-        val responses = (0 until numRecords) map (i => producer.send(record))
+      for (_ <- 0 until 50) {
+        val responses = (0 until numRecords) map (_ => producer.send(record))
         assertTrue("No request is complete.", responses.forall(!_.isDone()))
         producer.flush()
         assertTrue("All requests are complete.", responses.forall(_.isDone()))
@@ -386,18 +386,15 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
    */
   @Test
   def testCloseWithZeroTimeoutFromCallerThread() {
-    // create topic
-    val leaders = TestUtils.createTopic(zkUtils, topic, 2, 2, servers)
-    val leader0 = leaders(0)
-    val leader1 = leaders(1)
-
-    // create record
-    val record0 = new ProducerRecord[Array[Byte], Array[Byte]](topic, 0, null, "value".getBytes)
+    TestUtils.createTopic(zkUtils, topic, 2, 2, servers)
+    val partition = 0
+    consumer.assign(List(new TopicPartition(topic, partition)).asJava)
+    val record0 = new ProducerRecord[Array[Byte], Array[Byte]](topic, partition, null, "value".getBytes)
 
     // Test closing from caller thread.
-    for (i <- 0 until 50) {
+    for (_ <- 0 until 50) {
       val producer = createProducer(brokerList, lingerMs = Long.MaxValue)
-      val responses = (0 until numRecords) map (i => producer.send(record0))
+      val responses = (0 until numRecords) map (_ => producer.send(record0))
       assertTrue("No request is complete.", responses.forall(!_.isDone()))
       producer.close(0, TimeUnit.MILLISECONDS)
       responses.foreach { future =>
@@ -409,12 +406,7 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
             assertEquals("java.lang.IllegalStateException: Producer is closed forcefully.", e.getMessage)
         }
       }
-      val fetchResponse = if (leader0.get == configs.head.brokerId) {
-        consumer1.fetch(new FetchRequestBuilder().addFetch(topic, 0, 0, Int.MaxValue).build())
-      } else {
-        consumer2.fetch(new FetchRequestBuilder().addFetch(topic, 0, 0, Int.MaxValue).build())
-      }
-      assertEquals("Fetch response should have no message returned.", 0, fetchResponse.messageSet(topic, 0).size)
+      assertEquals("Fetch response should have no message returned.", 0, consumer.poll(50).count)
     }
   }
 
@@ -423,12 +415,10 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
    */
   @Test
   def testCloseWithZeroTimeoutFromSenderThread() {
-    // create topic
-    val leaders = TestUtils.createTopic(zkUtils, topic, 1, 2, servers)
-    val leader = leaders(0)
-
-    // create record
-    val record = new ProducerRecord[Array[Byte], Array[Byte]](topic, 0, null, "value".getBytes)
+    TestUtils.createTopic(zkUtils, topic, 1, 2, servers)
+    val partition = 0
+    consumer.assign(List(new TopicPartition(topic, partition)).asJava)
+    val record = new ProducerRecord[Array[Byte], Array[Byte]](topic, partition, null, "value".getBytes)
 
     // Test closing from sender thread.
     class CloseCallback(producer: KafkaProducer[Array[Byte], Array[Byte]], sendRecords: Boolean) extends Callback {
@@ -436,7 +426,7 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
         // Trigger another batch in accumulator before close the producer. These messages should
         // not be sent.
         if (sendRecords)
-          (0 until numRecords) foreach (i => producer.send(record))
+          (0 until numRecords) foreach (_ => producer.send(record))
         // The close call will be called by all the message callbacks. This tests idempotence of the close call.
         producer.close(0, TimeUnit.MILLISECONDS)
         // Test close with non zero timeout. Should not block at all.
@@ -453,16 +443,9 @@ abstract class BaseProducerSendTest extends KafkaServerTestHarness {
         assertTrue("No request is complete.", responses.forall(!_.isDone()))
         // flush the messages.
         producer.flush()
-        assertTrue("All request are complete.", responses.forall(_.isDone()))
+        assertTrue("All requests are complete.", responses.forall(_.isDone()))
         // Check the messages received by broker.
-        val fetchResponse = if (leader.get == configs.head.brokerId) {
-          consumer1.fetch(new FetchRequestBuilder().addFetch(topic, 0, 0, Int.MaxValue).build())
-        } else {
-          consumer2.fetch(new FetchRequestBuilder().addFetch(topic, 0, 0, Int.MaxValue).build())
-        }
-        val expectedNumRecords = (i + 1) * numRecords
-        assertEquals("Fetch response to partition 0 should have %d messages.".format(expectedNumRecords),
-          expectedNumRecords, fetchResponse.messageSet(topic, 0).size)
+        pollUntilNumRecords(numRecords)
       } finally {
         producer.close()
       }
