@@ -1,13 +1,13 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
+ * contributor license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ * the License. You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -47,13 +47,16 @@ class KStreamKTableJoinProcessor<K1, K2, V1, V2, R> extends AbstractProcessor<K1
     @Override
     public void process(final K1 key, final V1 value) {
         // we do join iff keys are equal, thus, if key is null we cannot join and just ignore the record
+        // If {@code keyMapper} returns {@code null} it implies there is no match,
+        // so ignore unless it is a left join
         //
         // we also ignore the record if value is null, because in a key-value data model a null-value indicates
         // an empty message (ie, there is nothing to be joined) -- this contrast SQL NULL semantics
         // furthermore, on left/outer joins 'null' in ValueJoiner#apply() indicates a missing record --
         // thus, to be consistent and to avoid ambiguous null semantics, null values are ignored
         if (key != null && value != null) {
-            final V2 value2 = valueGetter.get(keyMapper.apply(key, value));
+            final K2 mappedKey = keyMapper.apply(key, value);
+            final V2 value2 = mappedKey == null ? null : valueGetter.get(mappedKey);
             if (leftJoin || value2 != null) {
                 context().forward(key, joiner.apply(value, value2));
             }

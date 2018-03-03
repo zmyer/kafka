@@ -1,13 +1,13 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,11 +17,11 @@
 package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsMetrics;
 import org.apache.kafka.streams.processor.internals.RecordContext;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,11 +37,10 @@ import java.util.NoSuchElementException;
  * @see org.apache.kafka.streams.state.Stores#create(String)
  */
 public class ThreadCache {
-    private static final Logger log = LoggerFactory.getLogger(ThreadCache.class);
-    private final String name;
+    private final Logger log;
     private final long maxCacheSizeBytes;
-    private final Map<String, NamedCache> caches = new HashMap<>();
     private final StreamsMetrics metrics;
+    private final Map<String, NamedCache> caches = new HashMap<>();
 
     // internal stats
     private long numPuts = 0;
@@ -49,16 +48,14 @@ public class ThreadCache {
     private long numEvicts = 0;
     private long numFlushes = 0;
 
-
-
     public interface DirtyEntryFlushListener {
         void apply(final List<DirtyEntry> dirty);
     }
 
-    public ThreadCache(final String name, long maxCacheSizeBytes, final StreamsMetrics metrics) {
-        this.name = name;
+    public ThreadCache(final LogContext logContext, long maxCacheSizeBytes, final StreamsMetrics metrics) {
         this.maxCacheSizeBytes = maxCacheSizeBytes;
         this.metrics = metrics;
+        this.log = logContext.logger(getClass());
     }
 
     public long puts() {
@@ -76,6 +73,38 @@ public class ThreadCache {
     public long flushes() {
         return numFlushes;
     }
+
+    /**
+     * The thread cache maintains a set of {@link NamedCache}s whose names are a concatenation of the task ID and the
+     * underlying store name. This method creates those names.
+     * @param taskIDString Task ID
+     * @param underlyingStoreName Underlying store name
+     * @return
+     */
+    public static String nameSpaceFromTaskIdAndStore(final String taskIDString, final String underlyingStoreName) {
+        return taskIDString + "-" + underlyingStoreName;
+    }
+
+    /**
+     * Given a cache name of the form taskid-storename, return the task ID.
+     * @param cacheName
+     * @return
+     */
+    public static String taskIDfromCacheName(final String cacheName) {
+        String[] tokens = cacheName.split("-");
+        return tokens[0];
+    }
+
+    /**
+     * Given a cache name of the form taskid-storename, return the store name.
+     * @param cacheName
+     * @return
+     */
+    public static String underlyingStoreNamefromCacheName(final String cacheName) {
+        String[] tokens = cacheName.split("-");
+        return tokens[1];
+    }
+
 
     /**
      * Add a listener that is called each time an entry is evicted from the cache or an explicit flush is called
@@ -97,11 +126,12 @@ public class ThreadCache {
         }
         cache.flush();
 
-        log.debug("Thread {} cache stats on flush: #puts={}, #gets={}, #evicts={}, #flushes={}",
-                  name, puts(), gets(), evicts(), flushes());
+        if (log.isTraceEnabled()) {
+            log.trace("Cache stats on flush: #puts={}, #gets={}, #evicts={}, #flushes={}", puts(), gets(), evicts(), flushes());
+        }
     }
 
-    public LRUCacheEntry get(final String namespace, byte[] key) {
+    public LRUCacheEntry get(final String namespace, Bytes key) {
         numGets++;
 
         if (key == null) {
@@ -112,20 +142,21 @@ public class ThreadCache {
         if (cache == null) {
             return null;
         }
-        return cache.get(Bytes.wrap(key));
+        return cache.get(key);
     }
 
-    public void put(final String namespace, byte[] key, LRUCacheEntry value) {
+    public void put(final String namespace, Bytes key, LRUCacheEntry value) {
         numPuts++;
+
         final NamedCache cache = getOrCreateCache(namespace);
-        cache.put(Bytes.wrap(key), value);
+        cache.put(key, value);
         maybeEvict(namespace);
     }
 
-    public LRUCacheEntry putIfAbsent(final String namespace, byte[] key, LRUCacheEntry value) {
+    public LRUCacheEntry putIfAbsent(final String namespace, Bytes key, LRUCacheEntry value) {
         final NamedCache cache = getOrCreateCache(namespace);
 
-        final LRUCacheEntry result = cache.putIfAbsent(Bytes.wrap(key), value);
+        final LRUCacheEntry result = cache.putIfAbsent(key, value);
         maybeEvict(namespace);
 
         if (result == null) {
@@ -134,27 +165,27 @@ public class ThreadCache {
         return result;
     }
 
-    public void putAll(final String namespace, final List<KeyValue<byte[], LRUCacheEntry>> entries) {
-        for (KeyValue<byte[], LRUCacheEntry> entry : entries) {
+    public void putAll(final String namespace, final List<KeyValue<Bytes, LRUCacheEntry>> entries) {
+        for (KeyValue<Bytes, LRUCacheEntry> entry : entries) {
             put(namespace, entry.key, entry.value);
         }
     }
 
-    public LRUCacheEntry delete(final String namespace, final byte[] key) {
+    public LRUCacheEntry delete(final String namespace, final Bytes key) {
         final NamedCache cache = getCache(namespace);
         if (cache == null) {
             return null;
         }
 
-        return cache.delete(Bytes.wrap(key));
+        return cache.delete(key);
     }
 
-    public MemoryLRUCacheBytesIterator range(final String namespace, final byte[] from, final byte[] to) {
+    public MemoryLRUCacheBytesIterator range(final String namespace, final Bytes from, final Bytes to) {
         final NamedCache cache = getCache(namespace);
         if (cache == null) {
             return new MemoryLRUCacheBytesIterator(Collections.<Bytes>emptyIterator(), new NamedCache(namespace, this.metrics));
         }
-        return new MemoryLRUCacheBytesIterator(cache.keyRange(cacheKey(from), cacheKey(to)), cache);
+        return new MemoryLRUCacheBytesIterator(cache.keyRange(from, to), cache);
     }
 
     public MemoryLRUCacheBytesIterator all(final String namespace) {
@@ -164,8 +195,7 @@ public class ThreadCache {
         }
         return new MemoryLRUCacheBytesIterator(cache.allKeys(), cache);
     }
-
-
+    
     public long size() {
         long size = 0;
         for (NamedCache cache : caches.values()) {
@@ -173,10 +203,6 @@ public class ThreadCache {
             if (isOverflowing(size)) {
                 return Long.MAX_VALUE;
             }
-        }
-
-        if (isOverflowing(size)) {
-            return Long.MAX_VALUE;
         }
         return size;
     }
@@ -189,6 +215,9 @@ public class ThreadCache {
         long sizeInBytes = 0;
         for (final NamedCache namedCache : caches.values()) {
             sizeInBytes += namedCache.sizeInBytes();
+            if (isOverflowing(sizeInBytes)) {
+                return Long.MAX_VALUE;
+            }
         }
         return sizeInBytes;
     }
@@ -201,6 +230,7 @@ public class ThreadCache {
     }
 
     private void maybeEvict(final String namespace) {
+        int numEvicted = 0;
         while (sizeBytes() > maxCacheSizeBytes) {
             final NamedCache cache = getOrCreateCache(namespace);
             // we abort here as the put on this cache may have triggered
@@ -210,9 +240,12 @@ public class ThreadCache {
             if (cache.size() == 0) {
                 return;
             }
-            log.trace("Thread {} evicting cache {}", name, namespace);
             cache.evict();
             numEvicts++;
+            numEvicted++;
+        }
+        if (log.isTraceEnabled()) {
+            log.trace("Evicted {} entries from cache {}", numEvicted, namespace);
         }
     }
 
@@ -228,11 +261,6 @@ public class ThreadCache {
         }
         return cache;
     }
-
-    private Bytes cacheKey(final byte[] keyBytes) {
-        return Bytes.wrap(keyBytes);
-    }
-
 
     static class MemoryLRUCacheBytesIterator implements PeekingKeyValueIterator<Bytes, LRUCacheEntry> {
         private final Iterator<Bytes> keys;
@@ -303,12 +331,12 @@ public class ThreadCache {
         }
     }
 
-    public static class DirtyEntry {
+    static class DirtyEntry {
         private final Bytes key;
         private final byte[] newValue;
         private final RecordContext recordContext;
 
-        public DirtyEntry(final Bytes key, final byte[] newValue, final RecordContext recordContext) {
+        DirtyEntry(final Bytes key, final byte[] newValue, final RecordContext recordContext) {
             this.key = key;
             this.newValue = newValue;
             this.recordContext = recordContext;
@@ -326,5 +354,4 @@ public class ThreadCache {
             return recordContext;
         }
     }
-
 }

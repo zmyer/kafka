@@ -1,10 +1,10 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
+ * contributor license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * the License. You may obtain a copy of the License at
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.serialization.Serde;
@@ -31,34 +30,32 @@ import java.util.Map;
  *
  * @see org.apache.kafka.streams.state.Stores#create(String)
  */
-
+@Deprecated
 public class RocksDBSessionStoreSupplier<K, V> extends AbstractStoreSupplier<K, V, SessionStore> implements WindowStoreSupplier<SessionStore> {
 
-    private static final int NUM_SEGMENTS = 3;
+    static final int NUM_SEGMENTS = 3;
     private final long retentionPeriod;
-    private final boolean enableCaching;
+    private final SessionStoreBuilder<K, V> builder;
 
-    public RocksDBSessionStoreSupplier(String name, long retentionPeriod, Serde<K> keySerde, Serde<V> valueSerde, boolean logged, Map<String, String> logConfig, boolean enableCaching) {
+    public RocksDBSessionStoreSupplier(String name, long retentionPeriod, Serde<K> keySerde, Serde<V> valueSerde, boolean logged, Map<String, String> logConfig, boolean cached) {
         super(name, keySerde, valueSerde, Time.SYSTEM, logged, logConfig);
         this.retentionPeriod = retentionPeriod;
-        this.enableCaching = enableCaching;
-    }
-
-    public String name() {
-        return name;
+        builder = new SessionStoreBuilder<>(new RocksDbSessionBytesStoreSupplier(name,
+                                                                                 retentionPeriod),
+                                            keySerde,
+                                            valueSerde,
+                                            time);
+        if (cached) {
+            builder.withCachingEnabled();
+        }
+        // logged by default so we only need to worry about when it is disabled.
+        if (!logged) {
+            builder.withLoggingDisabled();
+        }
     }
 
     public SessionStore<K, V> get() {
-        final RocksDBSegmentedBytesStore bytesStore = new RocksDBSegmentedBytesStore(name,
-                                                                                     retentionPeriod,
-                                                                                     NUM_SEGMENTS,
-                                                                                     new SessionKeySchema());
-        final MeteredSegmentedBytesStore metered = new MeteredSegmentedBytesStore(logged ? new ChangeLoggingSegmentedBytesStore(bytesStore)
-                                                                                          : bytesStore, "rocksdb-session-store", time);
-        if (enableCaching) {
-            return new CachingSessionStore<>(metered, keySerde, valueSerde);
-        }
-        return new RocksDBSessionStore<>(metered, keySerde, valueSerde);
+        return builder.build();
 
     }
 

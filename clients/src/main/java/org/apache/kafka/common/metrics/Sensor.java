@@ -1,14 +1,18 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements. See the NOTICE
- * file distributed with this work for additional information regarding copyright ownership. The ASF licenses this file
- * to You under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the
- * License. You may obtain a copy of the License at
- * 
- * http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.apache.kafka.common.metrics;
 
@@ -75,8 +79,8 @@ public final class Sensor {
 
         public static RecordingLevel forId(int id) {
             if (id < MIN_RECORDING_LEVEL_KEY || id > MAX_RECORDING_LEVEL_KEY)
-                throw new IllegalArgumentException(String.format("Unexpected RecordLevel id `%s`, it should be between `%s` " +
-                    "and `%s` (inclusive)", id, MIN_RECORDING_LEVEL_KEY, MAX_RECORDING_LEVEL_KEY));
+                throw new IllegalArgumentException(String.format("Unexpected RecordLevel id `%d`, it should be between `%d` " +
+                    "and `%d` (inclusive)", id, MIN_RECORDING_LEVEL_KEY, MAX_RECORDING_LEVEL_KEY));
             return ID_TO_TYPE[id];
         }
 
@@ -86,11 +90,7 @@ public final class Sensor {
         }
 
         public boolean shouldRecord(final int configId) {
-            if (configId == DEBUG.id) {
-                return true;
-            } else {
-                return configId == this.id;
-            }
+            return configId == DEBUG.id || configId == this.id;
         }
 
     }
@@ -117,8 +117,8 @@ public final class Sensor {
     private void checkForest(Set<Sensor> sensors) {
         if (!sensors.add(this))
             throw new IllegalArgumentException("Circular dependency in sensors: " + name() + " is its own parent.");
-        for (int i = 0; i < parents.length; i++)
-            parents[i].checkForest(sensors);
+        for (Sensor parent : parents)
+            parent.checkForest(sensors);
     }
 
     /**
@@ -164,16 +164,21 @@ public final class Sensor {
      *         bound
      */
     public void record(double value, long timeMs) {
+        record(value, timeMs, true);
+    }
+
+    public void record(double value, long timeMs, boolean checkQuotas) {
         if (shouldRecord()) {
             this.lastRecordTime = timeMs;
             synchronized (this) {
                 // increment all the stats
-                for (int i = 0; i < this.stats.size(); i++)
-                    this.stats.get(i).record(config, value, timeMs);
-                checkQuotas(timeMs);
+                for (Stat stat : this.stats)
+                    stat.record(config, value, timeMs);
+                if (checkQuotas)
+                    checkQuotas(timeMs);
             }
-            for (int i = 0; i < parents.length; i++)
-                parents[i].record(value, timeMs);
+            for (Sensor parent : parents)
+                parent.record(value, timeMs, checkQuotas);
         }
     }
 
@@ -185,17 +190,14 @@ public final class Sensor {
     }
 
     public void checkQuotas(long timeMs) {
-        for (int i = 0; i < this.metrics.size(); i++) {
-            KafkaMetric metric = this.metrics.get(i);
+        for (KafkaMetric metric : this.metrics) {
             MetricConfig config = metric.config();
             if (config != null) {
                 Quota quota = config.quota();
                 if (quota != null) {
-                    double value = metric.value(timeMs);
+                    double value = metric.measurableValue(timeMs);
                     if (!quota.acceptable(value)) {
-                        throw new QuotaViolationException(
-                            metric.metricName(),
-                            value,
+                        throw new QuotaViolationException(metric.metricName(), value,
                             quota.bound());
                     }
                 }
@@ -205,9 +207,11 @@ public final class Sensor {
 
     /**
      * Register a compound statistic with this sensor with no config override
+     * @param stat The stat to register
+     * @return true if stat is added to sensor, false if sensor is expired
      */
-    public void add(CompoundStat stat) {
-        add(stat, null);
+    public boolean add(CompoundStat stat) {
+        return add(stat, null);
     }
 
     /**
@@ -215,23 +219,30 @@ public final class Sensor {
      * @param stat The stat to register
      * @param config The configuration for this stat. If null then the stat will use the default configuration for this
      *        sensor.
+     * @return true if stat is added to sensor, false if sensor is expired
      */
-    public synchronized void add(CompoundStat stat, MetricConfig config) {
+    public synchronized boolean add(CompoundStat stat, MetricConfig config) {
+        if (hasExpired())
+            return false;
+
         this.stats.add(Utils.notNull(stat));
+        Object lock = new Object();
         for (NamedMeasurable m : stat.stats()) {
-            KafkaMetric metric = new KafkaMetric(this, m.name(), m.stat(), config == null ? this.config : config, time);
+            KafkaMetric metric = new KafkaMetric(lock, m.name(), m.stat(), config == null ? this.config : config, time);
             this.registry.registerMetric(metric);
             this.metrics.add(metric);
         }
+        return true;
     }
 
     /**
      * Register a metric with this sensor
      * @param metricName The name of the metric
      * @param stat The statistic to keep
+     * @return true if metric is added to sensor, false if sensor is expired
      */
-    public void add(MetricName metricName, MeasurableStat stat) {
-        add(metricName, stat, null);
+    public boolean add(MetricName metricName, MeasurableStat stat) {
+        return add(metricName, stat, null);
     }
 
     /**
@@ -239,8 +250,12 @@ public final class Sensor {
      * @param metricName The name of the metric
      * @param stat The statistic to keep
      * @param config A special configuration for this metric. If null use the sensor default configuration.
+     * @return true if metric is added to sensor, false if sensor is expired
      */
-    public synchronized void add(MetricName metricName, MeasurableStat stat, MetricConfig config) {
+    public synchronized boolean add(MetricName metricName, MeasurableStat stat, MetricConfig config) {
+        if (hasExpired())
+            return false;
+
         KafkaMetric metric = new KafkaMetric(new Object(),
                                              Utils.notNull(metricName),
                                              Utils.notNull(stat),
@@ -249,6 +264,7 @@ public final class Sensor {
         this.registry.registerMetric(metric);
         this.metrics.add(metric);
         this.stats.add(stat);
+        return true;
     }
 
     /**

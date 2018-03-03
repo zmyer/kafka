@@ -1,13 +1,12 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.kafka.common.security.scram;
 
 import java.io.IOException;
@@ -99,14 +97,18 @@ public class ScramSaslClient implements SaslClient {
                         throw new SaslException("Expected empty challenge");
                     clientNonce = formatter.secureRandomString();
                     NameCallback nameCallback = new NameCallback("Name:");
+                    ScramExtensionsCallback extensionsCallback = new ScramExtensionsCallback();
+
                     try {
-                        callbackHandler.handle(new Callback[]{nameCallback});
+                        callbackHandler.handle(new Callback[]{nameCallback, extensionsCallback});
                     } catch (IOException | UnsupportedCallbackException e) {
                         throw new SaslException("User name could not be obtained", e);
                     }
+
                     String username = nameCallback.getName();
                     String saslName = formatter.saslName(username);
-                    this.clientFirstMessage = new ScramMessages.ClientFirstMessage(saslName, clientNonce);
+                    Map<String, String> extensions = extensionsCallback.extensions();
+                    this.clientFirstMessage = new ScramMessages.ClientFirstMessage(saslName, clientNonce, extensions);
                     setState(State.RECEIVE_SERVER_FIRST_MESSAGE);
                     return clientFirstMessage.toBytes();
 

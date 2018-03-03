@@ -19,7 +19,6 @@ package kafka.consumer
 
 import kafka.server.{AbstractFetcherManager, AbstractFetcherThread, BrokerAndInitialOffset}
 import kafka.cluster.{BrokerEndPoint, Cluster}
-import org.apache.kafka.common.protocol.SecurityProtocol
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.utils.Time
 
@@ -39,13 +38,13 @@ import java.util.concurrent.atomic.AtomicInteger
  *  Once ConsumerFetcherManager is created, startConnections() and stopAllConnections() can be called repeatedly
  *  until shutdown() is called.
  */
+@deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
 class ConsumerFetcherManager(private val consumerIdString: String,
                              private val config: ConsumerConfig,
                              private val zkUtils : ZkUtils)
         extends AbstractFetcherManager("ConsumerFetcherManager-%d".format(Time.SYSTEM.milliseconds),
                                        config.clientId, config.numConsumerFetchers) {
   private var partitionMap: immutable.Map[TopicPartition, PartitionTopicInfo] = null
-  private var cluster: Cluster = null
   private val noLeaderPartitionSet = new mutable.HashSet[TopicPartition]
   private val lock = new ReentrantLock
   private val cond = lock.newCondition()
@@ -70,7 +69,7 @@ class ConsumerFetcherManager(private val consumerIdString: String,
                                                             config.clientId,
                                                             config.socketTimeoutMs,
                                                             correlationId.getAndIncrement).topicsMetadata
-        if(logger.isDebugEnabled) topicsMetadata.foreach(topicMetadata => debug(topicMetadata.toString()))
+        if(isDebugEnabled) topicsMetadata.foreach(topicMetadata => debug(topicMetadata.toString()))
         topicsMetadata.foreach { tmd =>
           val topic = tmd.topic
           tmd.partitionsMetadata.foreach { pmd =>
@@ -84,7 +83,7 @@ class ConsumerFetcherManager(private val consumerIdString: String,
         }
       } catch {
         case t: Throwable => {
-            if (!isRunning.get())
+            if (!isRunning)
               throw t /* If this thread is stopped, propagate this exception to kill the thread. */
             else
               warn("Failed to find leader for %s".format(noLeaderPartitionSet), t)
@@ -98,8 +97,8 @@ class ConsumerFetcherManager(private val consumerIdString: String,
           topicPartition -> BrokerAndInitialOffset(broker, partitionMap(topicPartition).getFetchOffset())}
         )
       } catch {
-        case t: Throwable => {
-          if (!isRunning.get())
+        case t: Throwable =>
+          if (!isRunning)
             throw t /* If this thread is stopped, propagate this exception to kill the thread. */
           else {
             warn("Failed to add leader for partitions %s; will retry".format(leaderForPartitionsMap.keySet.mkString(",")), t)
@@ -108,7 +107,6 @@ class ConsumerFetcherManager(private val consumerIdString: String,
             lock.unlock()
           }
         }
-      }
 
       shutdownIdleFetcherThreads()
       Thread.sleep(config.refreshLeaderBackoffMs)
@@ -116,9 +114,7 @@ class ConsumerFetcherManager(private val consumerIdString: String,
   }
 
   override def createFetcherThread(fetcherId: Int, sourceBroker: BrokerEndPoint): AbstractFetcherThread = {
-    new ConsumerFetcherThread(
-      "ConsumerFetcherThread-%s-%d-%d".format(consumerIdString, fetcherId, sourceBroker.id),
-      config, sourceBroker, partitionMap, this)
+    new ConsumerFetcherThread(consumerIdString, fetcherId, config, sourceBroker, partitionMap, this)
   }
 
   def startConnections(topicInfos: Iterable[PartitionTopicInfo], cluster: Cluster) {
@@ -127,7 +123,6 @@ class ConsumerFetcherManager(private val consumerIdString: String,
 
     inLock(lock) {
       partitionMap = topicInfos.map(tpi => (new TopicPartition(tpi.topic, tpi.partitionId), tpi)).toMap
-      this.cluster = cluster
       noLeaderPartitionSet ++= topicInfos.map(tpi => new TopicPartition(tpi.topic, tpi.partitionId))
       cond.signalAll()
     }

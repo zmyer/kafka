@@ -15,7 +15,7 @@
 
 import time
 import math
-from ducktape.mark import parametrize,ignore
+from ducktape.mark import parametrize
 from ducktape.mark.resource import cluster
 from ducktape.utils.util import wait_until
 
@@ -53,7 +53,7 @@ class ThrottlingTest(ProduceConsumeValidateTest):
         # ensure that the consumer is fully started before the producer starts
         # so that we don't miss any messages. This timeout ensures the sufficient
         # condition.
-        self.consumer_init_timeout_sec =  10
+        self.consumer_init_timeout_sec =  20
         self.num_brokers = 6
         self.num_partitions = 3
         self.kafka = KafkaService(test_context,
@@ -133,15 +133,14 @@ class ThrottlingTest(ProduceConsumeValidateTest):
         self.logger.debug("Transfer took %d second. Estimated time : %ds",
                           time_taken,
                           estimated_throttled_time)
-        assert time_taken >= estimated_throttled_time, \
+        assert time_taken >= estimated_throttled_time * 0.9, \
             ("Expected rebalance to take at least %ds, but it took %ds" % (
                 estimated_throttled_time,
                 time_taken))
 
-    @ignore
     @cluster(num_nodes=10)
-    @parametrize(bounce_brokers=False)
     @parametrize(bounce_brokers=True)
+    @parametrize(bounce_brokers=False)
     def test_throttled_reassignment(self, bounce_brokers):
         security_protocol = 'PLAINTEXT'
         self.kafka.security_protocol = security_protocol
@@ -151,9 +150,7 @@ class ThrottlingTest(ProduceConsumeValidateTest):
         bulk_producer = ProducerPerformanceService(
             context=self.test_context, num_nodes=1, kafka=self.kafka,
             topic=self.topic, num_records=self.num_records,
-            record_size=self.record_size, throughput=-1, client_id=producer_id,
-            jmx_object_names=['kafka.producer:type=producer-metrics,client-id=%s' % producer_id],
-            jmx_attributes=['outgoing-byte-rate'])
+            record_size=self.record_size, throughput=-1, client_id=producer_id)
 
 
         self.producer = VerifiableProducer(context=self.test_context,
@@ -174,3 +171,9 @@ class ThrottlingTest(ProduceConsumeValidateTest):
         bulk_producer.run()
         self.run_produce_consume_validate(core_test_action=
                                           lambda: self.reassign_partitions(bounce_brokers, self.throttle))
+
+        self.logger.debug("Bulk producer outgoing-byte-rates: %s",
+                          (metric.value for k, metrics in
+                          bulk_producer.metrics(group='producer-metrics', name='outgoing-byte-rate', client_id=producer_id) for
+                          metric in metrics)
+        )

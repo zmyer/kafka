@@ -1,13 +1,13 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
+ * contributor license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ * the License. You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,7 +25,10 @@ import org.apache.kafka.streams.processor.TaskId;
 import org.apache.kafka.streams.state.internals.ThreadCache;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 
 public abstract class AbstractProcessorContext implements InternalProcessorContext {
@@ -39,24 +42,22 @@ public abstract class AbstractProcessorContext implements InternalProcessorConte
     private final ThreadCache cache;
     private final Serde valueSerde;
     private boolean initialized;
-    private RecordContext recordContext;
-    private ProcessorNode currentNode;
+    protected RecordContext recordContext;
+    protected ProcessorNode currentNode;
     final StateManager stateManager;
 
     public AbstractProcessorContext(final TaskId taskId,
-                             final String applicationId,
-                             final StreamsConfig config,
-                             final StreamsMetrics metrics,
-                             final StateManager stateManager,
-                             final ThreadCache cache) {
-
+                                    final StreamsConfig config,
+                                    final StreamsMetrics metrics,
+                                    final StateManager stateManager,
+                                    final ThreadCache cache) {
         this.taskId = taskId;
-        this.applicationId = applicationId;
+        this.applicationId = config.getString(StreamsConfig.APPLICATION_ID_CONFIG);
         this.config = config;
         this.metrics = metrics;
         this.stateManager = stateManager;
-        valueSerde = config.valueSerde();
-        keySerde = config.keySerde();
+        valueSerde = config.defaultValueSerde();
+        keySerde = config.defaultKeySerde();
         this.cache = cache;
     }
 
@@ -91,12 +92,14 @@ public abstract class AbstractProcessorContext implements InternalProcessorConte
     }
 
     @Override
-    public void register(final StateStore store, final boolean loggingEnabled, final StateRestoreCallback stateRestoreCallback) {
+    public void register(final StateStore store,
+                         final boolean deprecatedAndIgnoredLoggingEnabled,
+                         final StateRestoreCallback stateRestoreCallback) {
         if (initialized) {
             throw new IllegalStateException("Can only create state stores during initialization.");
         }
-
-        stateManager.register(store, loggingEnabled, stateRestoreCallback);
+        Objects.requireNonNull(store, "store must not be null");
+        stateManager.register(store, stateRestoreCallback);
     }
 
     /**
@@ -108,7 +111,7 @@ public abstract class AbstractProcessorContext implements InternalProcessorConte
             throw new IllegalStateException("This should not happen as topic() should only be called while a record is processed");
         }
 
-        String topic = recordContext.topic();
+        final String topic = recordContext.topic();
 
         if (topic.equals(NONEXIST_TOPIC)) {
             return null;
@@ -155,11 +158,28 @@ public abstract class AbstractProcessorContext implements InternalProcessorConte
 
     @Override
     public Map<String, Object> appConfigs() {
-        return config.originals();
+        final Map<String, Object> combined = new HashMap<>();
+        combined.putAll(config.originals());
+        combined.putAll(config.values());
+        return combined;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <K, V> void forward(final K key, final V value) {
+        final ProcessorNode previousNode = currentNode();
+        try {
+            for (final ProcessorNode child : (List<ProcessorNode>) currentNode().children()) {
+                setCurrentNode(child);
+                child.process(key, value);
+            }
+        } finally {
+            setCurrentNode(previousNode);
+        }
     }
 
     @Override
-    public Map<String, Object> appConfigsWithPrefix(String prefix) {
+    public Map<String, Object> appConfigsWithPrefix(final String prefix) {
         return config.originalsWithPrefix(prefix);
     }
 
@@ -170,7 +190,7 @@ public abstract class AbstractProcessorContext implements InternalProcessorConte
 
     @Override
     public RecordContext recordContext() {
-        return this.recordContext;
+        return recordContext;
     }
 
     @Override
@@ -191,5 +211,10 @@ public abstract class AbstractProcessorContext implements InternalProcessorConte
     @Override
     public void initialized() {
         initialized = true;
+    }
+
+    @Override
+    public void uninitialize() {
+        initialized = false;
     }
 }

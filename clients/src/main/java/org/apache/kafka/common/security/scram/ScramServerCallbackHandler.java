@@ -1,10 +1,10 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
+ * contributor license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * the License. You may obtain a copy of the License at
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.kafka.common.security.scram;
 
 import java.io.IOException;
@@ -26,15 +25,21 @@ import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 
 import org.apache.kafka.common.network.Mode;
-import org.apache.kafka.common.security.auth.AuthCallbackHandler;
+import org.apache.kafka.common.security.authenticator.AuthCallbackHandler;
 import org.apache.kafka.common.security.authenticator.CredentialCache;
+import org.apache.kafka.common.security.token.delegation.DelegationTokenCache;
+import org.apache.kafka.common.security.token.delegation.DelegationTokenCredentialCallback;
 
 public class ScramServerCallbackHandler implements AuthCallbackHandler {
 
     private final CredentialCache.Cache<ScramCredential> credentialCache;
+    private final DelegationTokenCache tokenCache;
+    private String saslMechanism;
 
-    public ScramServerCallbackHandler(CredentialCache.Cache<ScramCredential> credentialCache) {
+    public ScramServerCallbackHandler(CredentialCache.Cache<ScramCredential> credentialCache,
+                                      DelegationTokenCache tokenCache) {
         this.credentialCache = credentialCache;
+        this.tokenCache = tokenCache;
     }
 
     @Override
@@ -43,15 +48,21 @@ public class ScramServerCallbackHandler implements AuthCallbackHandler {
         for (Callback callback : callbacks) {
             if (callback instanceof NameCallback)
                 username = ((NameCallback) callback).getDefaultName();
-            else if (callback instanceof ScramCredentialCallback)
-                ((ScramCredentialCallback) callback).scramCredential(credentialCache.get(username));
-            else
+            else if (callback instanceof DelegationTokenCredentialCallback) {
+                DelegationTokenCredentialCallback tokenCallback = (DelegationTokenCredentialCallback) callback;
+                tokenCallback.scramCredential(tokenCache.credential(saslMechanism, username));
+                tokenCallback.tokenOwner(tokenCache.owner(username));
+            } else if (callback instanceof ScramCredentialCallback) {
+                ScramCredentialCallback sc = (ScramCredentialCallback) callback;
+                sc.scramCredential(credentialCache.get(username));
+            } else
                 throw new UnsupportedCallbackException(callback);
         }
     }
 
     @Override
     public void configure(Map<String, ?> configs, Mode mode, Subject subject, String saslMechanism) {
+        this.saslMechanism = saslMechanism;
     }
 
     @Override
