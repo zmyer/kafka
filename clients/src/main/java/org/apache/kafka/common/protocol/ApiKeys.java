@@ -35,10 +35,10 @@ import org.apache.kafka.common.requests.ControlledShutdownRequest;
 import org.apache.kafka.common.requests.ControlledShutdownResponse;
 import org.apache.kafka.common.requests.CreateAclsRequest;
 import org.apache.kafka.common.requests.CreateAclsResponse;
-import org.apache.kafka.common.requests.CreatePartitionsRequest;
-import org.apache.kafka.common.requests.CreatePartitionsResponse;
 import org.apache.kafka.common.requests.CreateDelegationTokenRequest;
 import org.apache.kafka.common.requests.CreateDelegationTokenResponse;
+import org.apache.kafka.common.requests.CreatePartitionsRequest;
+import org.apache.kafka.common.requests.CreatePartitionsResponse;
 import org.apache.kafka.common.requests.CreateTopicsRequest;
 import org.apache.kafka.common.requests.CreateTopicsResponse;
 import org.apache.kafka.common.requests.DeleteAclsRequest;
@@ -53,12 +53,12 @@ import org.apache.kafka.common.requests.DescribeAclsRequest;
 import org.apache.kafka.common.requests.DescribeAclsResponse;
 import org.apache.kafka.common.requests.DescribeConfigsRequest;
 import org.apache.kafka.common.requests.DescribeConfigsResponse;
+import org.apache.kafka.common.requests.DescribeDelegationTokenRequest;
+import org.apache.kafka.common.requests.DescribeDelegationTokenResponse;
 import org.apache.kafka.common.requests.DescribeGroupsRequest;
 import org.apache.kafka.common.requests.DescribeGroupsResponse;
 import org.apache.kafka.common.requests.DescribeLogDirsRequest;
 import org.apache.kafka.common.requests.DescribeLogDirsResponse;
-import org.apache.kafka.common.requests.DescribeDelegationTokenRequest;
-import org.apache.kafka.common.requests.DescribeDelegationTokenResponse;
 import org.apache.kafka.common.requests.EndTxnRequest;
 import org.apache.kafka.common.requests.EndTxnResponse;
 import org.apache.kafka.common.requests.ExpireDelegationTokenRequest;
@@ -118,12 +118,14 @@ import static org.apache.kafka.common.protocol.types.Type.RECORDS;
 /**
  * Identifiers for all the Kafka APIs
  */
+// TODO: 2018/3/5 by zmyer
 public enum ApiKeys {
     PRODUCE(0, "Produce", ProduceRequest.schemaVersions(), ProduceResponse.schemaVersions()),
     FETCH(1, "Fetch", FetchRequest.schemaVersions(), FetchResponse.schemaVersions()),
     LIST_OFFSETS(2, "ListOffsets", ListOffsetRequest.schemaVersions(), ListOffsetResponse.schemaVersions()),
     METADATA(3, "Metadata", MetadataRequest.schemaVersions(), MetadataResponse.schemaVersions()),
-    LEADER_AND_ISR(4, "LeaderAndIsr", true, LeaderAndIsrRequest.schemaVersions(), LeaderAndIsrResponse.schemaVersions()),
+    LEADER_AND_ISR(4, "LeaderAndIsr", true, LeaderAndIsrRequest.schemaVersions(),
+            LeaderAndIsrResponse.schemaVersions()),
     STOP_REPLICA(5, "StopReplica", true, StopReplicaRequest.schemaVersions(), StopReplicaResponse.schemaVersions()),
     UPDATE_METADATA(6, "UpdateMetadata", true, UpdateMetadataRequest.schemaVersions(),
             UpdateMetadataResponse.schemaVersions()),
@@ -159,7 +161,8 @@ public enum ApiKeys {
             OffsetsForLeaderEpochResponse.schemaVersions()),
     ADD_PARTITIONS_TO_TXN(24, "AddPartitionsToTxn", false, RecordBatch.MAGIC_VALUE_V2,
             AddPartitionsToTxnRequest.schemaVersions(), AddPartitionsToTxnResponse.schemaVersions()),
-    ADD_OFFSETS_TO_TXN(25, "AddOffsetsToTxn", false, RecordBatch.MAGIC_VALUE_V2, AddOffsetsToTxnRequest.schemaVersions(),
+    ADD_OFFSETS_TO_TXN(25, "AddOffsetsToTxn", false, RecordBatch.MAGIC_VALUE_V2,
+            AddOffsetsToTxnRequest.schemaVersions(),
             AddOffsetsToTxnResponse.schemaVersions()),
     END_TXN(26, "EndTxn", false, RecordBatch.MAGIC_VALUE_V2, EndTxnRequest.schemaVersions(),
             EndTxnResponse.schemaVersions()),
@@ -182,10 +185,14 @@ public enum ApiKeys {
             SaslAuthenticateResponse.schemaVersions()),
     CREATE_PARTITIONS(37, "CreatePartitions", CreatePartitionsRequest.schemaVersions(),
             CreatePartitionsResponse.schemaVersions()),
-    CREATE_DELEGATION_TOKEN(38, "CreateDelegationToken", CreateDelegationTokenRequest.schemaVersions(), CreateDelegationTokenResponse.schemaVersions()),
-    RENEW_DELEGATION_TOKEN(39, "RenewDelegationToken", RenewDelegationTokenRequest.schemaVersions(), RenewDelegationTokenResponse.schemaVersions()),
-    EXPIRE_DELEGATION_TOKEN(40, "ExpireDelegationToken", ExpireDelegationTokenRequest.schemaVersions(), ExpireDelegationTokenResponse.schemaVersions()),
-    DESCRIBE_DELEGATION_TOKEN(41, "DescribeDelegationToken", DescribeDelegationTokenRequest.schemaVersions(), DescribeDelegationTokenResponse.schemaVersions()),
+    CREATE_DELEGATION_TOKEN(38, "CreateDelegationToken", CreateDelegationTokenRequest.schemaVersions(),
+            CreateDelegationTokenResponse.schemaVersions()),
+    RENEW_DELEGATION_TOKEN(39, "RenewDelegationToken", RenewDelegationTokenRequest.schemaVersions(),
+            RenewDelegationTokenResponse.schemaVersions()),
+    EXPIRE_DELEGATION_TOKEN(40, "ExpireDelegationToken", ExpireDelegationTokenRequest.schemaVersions(),
+            ExpireDelegationTokenResponse.schemaVersions()),
+    DESCRIBE_DELEGATION_TOKEN(41, "DescribeDelegationToken", DescribeDelegationTokenRequest.schemaVersions(),
+            DescribeDelegationTokenResponse.schemaVersions()),
     DELETE_GROUPS(42, "DeleteGroups", DeleteGroupsRequest.schemaVersions(), DeleteGroupsResponse.schemaVersions());
 
     private static final ApiKeys[] ID_TO_TYPE;
@@ -194,11 +201,13 @@ public enum ApiKeys {
 
     static {
         int maxKey = -1;
-        for (ApiKeys key : ApiKeys.values())
+        for (ApiKeys key : ApiKeys.values()) {
             maxKey = Math.max(maxKey, key.id);
+        }
         ApiKeys[] idToType = new ApiKeys[maxKey + 1];
-        for (ApiKeys key : ApiKeys.values())
+        for (ApiKeys key : ApiKeys.values()) {
             idToType[key.id] = key;
+        }
         ID_TO_TYPE = idToType;
         MAX_API_KEY = maxKey;
     }
@@ -229,22 +238,26 @@ public enum ApiKeys {
 
     ApiKeys(int id, String name, boolean clusterAction, byte minRequiredInterBrokerMagic,
             Schema[] requestSchemas, Schema[] responseSchemas) {
-        if (id < 0)
+        if (id < 0) {
             throw new IllegalArgumentException("id must not be negative, id: " + id);
+        }
         this.id = (short) id;
         this.name = name;
         this.clusterAction = clusterAction;
         this.minRequiredInterBrokerMagic = minRequiredInterBrokerMagic;
 
-        if (requestSchemas.length != responseSchemas.length)
+        if (requestSchemas.length != responseSchemas.length) {
             throw new IllegalStateException(requestSchemas.length + " request versions for api " + name
                     + " but " + responseSchemas.length + " response versions.");
+        }
 
         for (int i = 0; i < requestSchemas.length; ++i) {
-            if (requestSchemas[i] == null)
+            if (requestSchemas[i] == null) {
                 throw new IllegalStateException("Request schema for api " + name + " for version " + i + " is null");
-            if (responseSchemas[i] == null)
+            }
+            if (responseSchemas[i] == null) {
                 throw new IllegalStateException("Response schema for api " + name + " for version " + i + " is null");
+            }
         }
 
         boolean requestRetainsBufferReference = false;
@@ -260,9 +273,10 @@ public enum ApiKeys {
     }
 
     public static ApiKeys forId(int id) {
-        if (!hasId(id))
+        if (!hasId(id)) {
             throw new IllegalArgumentException(String.format("Unexpected ApiKeys id `%s`, it should be between `%s` " +
                     "and `%s` (inclusive)", id, MIN_API_KEY, MAX_API_KEY));
+        }
         return ID_TO_TYPE[id];
     }
 
@@ -302,14 +316,16 @@ public enum ApiKeys {
             if (version != fallbackVersion) {
                 buffer.position(bufferPosition);
                 return responseSchema(fallbackVersion).read(buffer);
-            } else
+            } else {
                 throw e;
+            }
         }
     }
 
     private Schema schemaFor(Schema[] versions, short version) {
-        if (!isVersionSupported(version))
+        if (!isVersionSupported(version)) {
             throw new IllegalArgumentException("Invalid version for API key " + this + ": " + version);
+        }
         return versions[version];
     }
 
@@ -347,8 +363,9 @@ public enum ApiKeys {
         Schema.Visitor detector = new Schema.Visitor() {
             @Override
             public void visit(Type field) {
-                if (field == BYTES || field == NULLABLE_BYTES || field == RECORDS)
+                if (field == BYTES || field == NULLABLE_BYTES || field == RECORDS) {
                     hasBuffer.set(true);
+                }
             }
         };
         schema.walk(detector);

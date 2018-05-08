@@ -21,6 +21,7 @@ package org.apache.kafka.common.utils;
  *
  * Implementations of this class should be thread-safe.
  */
+// TODO: 2018/3/5 by zmyer
 public interface Time {
 
     Time SYSTEM = new SystemTime();

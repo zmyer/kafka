@@ -22,6 +22,7 @@ import org.apache.kafka.common.utils.ByteBufferOutputStream;
  * A mutable record batch is one that can be modified in place (without copying). This is used by the broker
  * to override certain fields in the batch before appending it to the log.
  */
+// TODO: 2018/3/5 by zmyer
 public interface MutableRecordBatch extends RecordBatch {
 
     /**

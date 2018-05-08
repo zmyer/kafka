@@ -43,6 +43,7 @@ import static org.apache.kafka.common.protocol.types.Type.NULLABLE_STRING;
 /**
  * This wrapper supports both v0 and v1 of OffsetCommitRequest.
  */
+// TODO: 2018/3/8 by zmyer
 public class OffsetCommitRequest extends AbstractRequest {
     private static final String TOPICS_KEY_NAME = "topics";
     private static final String RETENTION_TIME_KEY_NAME = "retention_time";
@@ -127,6 +128,7 @@ public class OffsetCommitRequest extends AbstractRequest {
     private final long retentionTime;
     private final Map<TopicPartition, PartitionData> offsetData;
 
+    // TODO: 2018/3/8 by zmyer
     public static final class PartitionData {
         @Deprecated
         public final long timestamp;                // for V1

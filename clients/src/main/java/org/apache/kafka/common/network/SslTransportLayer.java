@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 /*
  * Transport layer for SSL communication
  */
+// TODO: 2018/3/6 by zmyer
 public class SslTransportLayer implements TransportLayer {
     private enum State {
         HANDSHAKE,
@@ -237,6 +238,7 @@ public class SslTransportLayer implements TransportLayer {
     * @throws IOException if read/write fails
     * @throws SslAuthenticationException if handshake fails with an {@link SSLException}
     */
+    // TODO: 2018/3/6 by zmyer
     @Override
     public void handshake() throws IOException {
         if (state == State.READY)
@@ -278,6 +280,7 @@ public class SslTransportLayer implements TransportLayer {
         }
     }
 
+    // TODO: 2018/3/6 by zmyer
     private void doHandshake() throws IOException {
         boolean read = key.isReadable();
         boolean write = key.isWritable();

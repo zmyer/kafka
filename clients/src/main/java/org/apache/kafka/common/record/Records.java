@@ -40,6 +40,7 @@ import org.apache.kafka.common.utils.Time;
  *
  * See {@link MemoryRecords} for the in-memory representation and {@link FileRecords} for the on-disk representation.
  */
+// TODO: 2018/3/5 by zmyer
 public interface Records {
 
     int OFFSET_OFFSET = 0;

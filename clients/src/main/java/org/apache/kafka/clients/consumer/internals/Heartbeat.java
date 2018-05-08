@@ -19,6 +19,7 @@ package org.apache.kafka.clients.consumer.internals;
 /**
  * A helper class for managing the heartbeat to the coordinator
  */
+// TODO: 2018/3/8 by zmyer
 public final class Heartbeat {
     private final long sessionTimeout;
     private final long heartbeatInterval;

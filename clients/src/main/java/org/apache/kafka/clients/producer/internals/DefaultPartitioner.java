@@ -35,6 +35,7 @@ import org.apache.kafka.common.utils.Utils;
  * <li>If no partition is specified but a key is present choose a partition based on a hash of the key
  * <li>If no partition or key is present choose a partition in a round-robin fashion
  */
+// TODO: 2018/3/7 by zmyer
 public class DefaultPartitioner implements Partitioner {
 
     private final ConcurrentMap<String, AtomicInteger> topicCounterMap = new ConcurrentHashMap<>();
@@ -51,13 +52,18 @@ public class DefaultPartitioner implements Partitioner {
      * @param valueBytes serialized value to partition on or null
      * @param cluster The current cluster metadata
      */
+    // TODO: 2018/3/7 by zmyer
     public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster) {
+        //首先获取指定topic下所有的分区信息
         List<PartitionInfo> partitions = cluster.partitionsForTopic(topic);
         int numPartitions = partitions.size();
         if (keyBytes == null) {
+            //
             int nextValue = nextValue(topic);
+            //获取当前topic可以进行分区
             List<PartitionInfo> availablePartitions = cluster.availablePartitionsForTopic(topic);
             if (availablePartitions.size() > 0) {
+                //选择一个可用的分区
                 int part = Utils.toPositive(nextValue) % availablePartitions.size();
                 return availablePartitions.get(part).partition();
             } else {
@@ -66,10 +72,12 @@ public class DefaultPartitioner implements Partitioner {
             }
         } else {
             // hash the keyBytes to choose a partition
+            //直接hash
             return Utils.toPositive(Utils.murmur2(keyBytes)) % numPartitions;
         }
     }
 
+    // TODO: 2018/3/7 by zmyer
     private int nextValue(String topic) {
         AtomicInteger counter = topicCounterMap.get(topic);
         if (null == counter) {

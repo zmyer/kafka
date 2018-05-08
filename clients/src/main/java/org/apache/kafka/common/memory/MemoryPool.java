@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
  * A common memory pool interface for non-blocking pools.
  * Every buffer returned from {@link #tryAllocate(int)} must always be {@link #release(ByteBuffer) released}.
  */
+// TODO: 2018/3/6 by zmyer
 public interface MemoryPool {
     MemoryPool NONE = new MemoryPool() {
         @Override

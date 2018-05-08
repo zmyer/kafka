@@ -24,6 +24,7 @@ import org.apache.kafka.common.utils.Utils
 
 import scala.collection.Map
 
+// TODO: by zmyer
 object EndPoint {
 
   private val uriParseExp = """^(.*)://\[?([0-9a-zA-Z\-%._:]*)\]?:(-?[0-9]+)""".r
@@ -62,6 +63,7 @@ object EndPoint {
 /**
  * Part of the broker definition - matching host/port pair to a protocol
  */
+// TODO: by zmyer
 case class EndPoint(host: String, port: Int, listenerName: ListenerName, securityProtocol: SecurityProtocol) {
   def connectionString: String = {
     val hostport =

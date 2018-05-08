@@ -29,6 +29,7 @@ import java.util.List;
  * <p>
  * This class is not thread-safe!
  */
+// TODO: 2018/3/5 by zmyer
 interface MetadataUpdater {
 
     /**

@@ -22,6 +22,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.utils.Time
 
+// TODO: by zmyer
 object QuotaType  {
   case object Fetch extends QuotaType
   case object Produce extends QuotaType
@@ -32,6 +33,7 @@ object QuotaType  {
 }
 sealed trait QuotaType
 
+// TODO: by zmyer
 object QuotaFactory extends Logging {
 
   object UnboundedQuota extends ReplicaQuota {

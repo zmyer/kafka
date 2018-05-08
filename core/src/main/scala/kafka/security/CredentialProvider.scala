@@ -25,6 +25,7 @@ import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.config.ConfigDef._
 import org.apache.kafka.common.security.token.delegation.DelegationTokenCache
 
+// TODO: by zmyer
 class CredentialProvider(scramMechanisms: Collection[String], val tokenCache: DelegationTokenCache) {
 
   val credentialCache = new CredentialCache

@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A wrapper for Thread that sets things up nicely
  */
+// TODO: 2018/3/9 by zmyer
 public class KafkaThread extends Thread {
 
     private final Logger log = LoggerFactory.getLogger(getClass());

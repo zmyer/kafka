@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Configuration values for metrics
  */
+// TODO: 2018/3/7 by zmyer
 public class MetricConfig {
 
     private Quota quota;

@@ -29,11 +29,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * The set of requests which have been sent or are being sent but haven't yet received a response
  */
+// TODO: 2018/3/5 by zmyer
 final class InFlightRequests {
-
+    //每个连接可以容纳的最大未接受应答的请求数目
     private final int maxInFlightRequestsPerConnection;
     private final Map<String, Deque<NetworkClient.InFlightRequest>> requests = new HashMap<>();
     /** Thread safe total number of in flight requests. */
+    //未应答的请求数目
     private final AtomicInteger inFlightRequestCount = new AtomicInteger(0);
 
     public InFlightRequests(int maxInFlightRequestsPerConnection) {
@@ -43,20 +45,27 @@ final class InFlightRequests {
     /**
      * Add the given request to the queue for the connection it was directed to
      */
+    // TODO: 2018/3/6 by zmyer
     public void add(NetworkClient.InFlightRequest request) {
+        //读取目标节点信息
         String destination = request.destination;
+        //获取发送目标节点对应的发送队列
         Deque<NetworkClient.InFlightRequest> reqs = this.requests.get(destination);
         if (reqs == null) {
+            //不存在则创建
             reqs = new ArrayDeque<>();
             this.requests.put(destination, reqs);
         }
+        //将消息插入到发送队列中
         reqs.addFirst(request);
+        //递增已经发送的请求数目
         inFlightRequestCount.incrementAndGet();
     }
 
     /**
      * Get the request queue for the given node
      */
+    // TODO: 2018/3/6 by zmyer
     private Deque<NetworkClient.InFlightRequest> requestQueue(String node) {
         Deque<NetworkClient.InFlightRequest> reqs = requests.get(node);
         if (reqs == null || reqs.isEmpty())
@@ -67,6 +76,7 @@ final class InFlightRequests {
     /**
      * Get the oldest request (the one that will be completed next) for the given node
      */
+    // TODO: 2018/3/6 by zmyer
     public NetworkClient.InFlightRequest completeNext(String node) {
         NetworkClient.InFlightRequest inFlightRequest = requestQueue(node).pollLast();
         inFlightRequestCount.decrementAndGet();
@@ -77,6 +87,7 @@ final class InFlightRequests {
      * Get the last request we sent to the given node (but don't remove it from the queue)
      * @param node The node id
      */
+    // TODO: 2018/3/6 by zmyer
     public NetworkClient.InFlightRequest lastSent(String node) {
         return requestQueue(node).peekFirst();
     }
@@ -86,8 +97,11 @@ final class InFlightRequests {
      * @param node The node the request was sent to
      * @return The request
      */
+    // TODO: 2018/3/6 by zmyer
     public NetworkClient.InFlightRequest completeLastSent(String node) {
+        //从待发送队列中剔除第一个请求消息
         NetworkClient.InFlightRequest inFlightRequest = requestQueue(node).pollFirst();
+        //递减inFlight中的消息数目
         inFlightRequestCount.decrementAndGet();
         return inFlightRequest;
     }
@@ -98,6 +112,7 @@ final class InFlightRequests {
      * @param node Node in question
      * @return true iff we have no requests still being sent to the given node
      */
+    // TODO: 2018/3/5 by zmyer
     public boolean canSendMore(String node) {
         Deque<NetworkClient.InFlightRequest> queue = requests.get(node);
         return queue == null || queue.isEmpty() ||

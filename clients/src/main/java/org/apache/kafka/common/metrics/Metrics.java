@@ -64,6 +64,7 @@ import java.util.concurrent.TimeUnit;
  * sensor.record(messageSize);
  * </pre>
  */
+// TODO: 2018/3/8 by zmyer
 public class Metrics implements Closeable {
 
     private final MetricConfig config;

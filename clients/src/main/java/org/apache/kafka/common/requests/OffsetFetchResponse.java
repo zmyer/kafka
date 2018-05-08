@@ -40,6 +40,7 @@ import static org.apache.kafka.common.protocol.CommonFields.TOPIC_NAME;
 import static org.apache.kafka.common.protocol.types.Type.INT64;
 import static org.apache.kafka.common.protocol.types.Type.NULLABLE_STRING;
 
+// TODO: 2018/3/8 by zmyer
 public class OffsetFetchResponse extends AbstractResponse {
 
     private static final String RESPONSES_KEY_NAME = "responses";

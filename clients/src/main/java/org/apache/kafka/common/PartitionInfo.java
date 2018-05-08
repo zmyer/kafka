@@ -19,6 +19,7 @@ package org.apache.kafka.common;
 /**
  * This is used to describe per-partition state in the MetadataResponse.
  */
+// TODO: 2018/3/5 by zmyer
 public class PartitionInfo {
 
     private final String topic;

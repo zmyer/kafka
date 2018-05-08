@@ -24,6 +24,7 @@ import java.util.Set;
 
 import org.apache.kafka.common.MetricNameTemplate;
 
+// TODO: 2018/3/8 by zmyer
 public class FetcherMetricsRegistry {
 
     public MetricNameTemplate fetchSizeAvg;

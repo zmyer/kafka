@@ -27,6 +27,7 @@ import java.net.Socket;
 import java.nio.channels.SelectionKey;
 import java.util.Objects;
 
+// TODO: 2018/3/5 by zmyer
 public class KafkaChannel {
     private final String id;
     private final TransportLayer transportLayer;
@@ -44,7 +45,8 @@ public class KafkaChannel {
     private boolean muted;
     private ChannelState state;
 
-    public KafkaChannel(String id, TransportLayer transportLayer, Authenticator authenticator, int maxReceiveSize, MemoryPool memoryPool) throws IOException {
+    public KafkaChannel(String id, TransportLayer transportLayer, Authenticator authenticator, int maxReceiveSize,
+            MemoryPool memoryPool) throws IOException {
         this.id = id;
         this.transportLayer = transportLayer;
         this.authenticator = authenticator;
@@ -73,20 +75,24 @@ public class KafkaChannel {
      * For SSL with client authentication enabled, {@link TransportLayer#handshake()} performs
      * authentication. For SASL, authentication is performed by {@link Authenticator#authenticate()}.
      */
+    // TODO: 2018/3/6 by zmyer
     public void prepare() throws AuthenticationException, IOException {
         try {
-            if (!transportLayer.ready())
+            if (!transportLayer.ready()) {
                 transportLayer.handshake();
-            if (transportLayer.ready() && !authenticator.complete())
+            }
+            if (transportLayer.ready() && !authenticator.complete()) {
                 authenticator.authenticate();
+            }
         } catch (AuthenticationException e) {
             // Clients are notified of authentication exceptions to enable operations to be terminated
             // without retries. Other errors are handled as network exceptions in Selector.
             state = new ChannelState(ChannelState.State.AUTHENTICATION_FAILED, e);
             throw e;
         }
-        if (ready())
+        if (ready()) {
             state = ChannelState.READY;
+        }
     }
 
     public void disconnect() {
@@ -104,8 +110,9 @@ public class KafkaChannel {
 
     public boolean finishConnect() throws IOException {
         boolean connected = transportLayer.finishConnect();
-        if (connected)
+        if (connected) {
             state = ready() ? ChannelState.READY : ChannelState.AUTHENTICATE;
+        }
         return connected;
     }
 
@@ -124,21 +131,25 @@ public class KafkaChannel {
     /**
      * externally muting a channel should be done via selector to ensure proper state handling
      */
+    // TODO: 2018/3/13 by zmyer
     void mute() {
-        if (!disconnected)
+        if (!disconnected) {
             transportLayer.removeInterestOps(SelectionKey.OP_READ);
+        }
         muted = true;
     }
 
     void unmute() {
-        if (!disconnected)
+        if (!disconnected) {
             transportLayer.addInterestOps(SelectionKey.OP_READ);
+        }
         muted = false;
     }
 
     /**
      * Returns true if this channel has been explicitly muted using {@link KafkaChannel#mute()}
      */
+    // TODO: 2018/3/6 by zmyer
     public boolean isMute() {
         return muted;
     }
@@ -148,8 +159,9 @@ public class KafkaChannel {
         //(receive == null) we dont mute. we also dont mute if whatever memory required has already been
         //successfully allocated (if none is required for the currently-being-read request
         //receive.memoryAllocated() is expected to return true)
-        if (receive == null || receive.memoryAllocated())
+        if (receive == null || receive.memoryAllocated()) {
             return false;
+        }
         //also cannot mute if underlying transport is not in the ready state
         return transportLayer.ready();
     }
@@ -174,15 +186,22 @@ public class KafkaChannel {
 
     public String socketDescription() {
         Socket socket = transportLayer.socketChannel().socket();
-        if (socket.getInetAddress() == null)
+        if (socket.getInetAddress() == null) {
             return socket.getLocalAddress().toString();
+        }
         return socket.getInetAddress().toString();
     }
 
+    // TODO: 2018/3/6 by zmyer
     public void setSend(Send send) {
-        if (this.send != null)
-            throw new IllegalStateException("Attempt to begin a send operation with prior send operation still in progress, connection id is " + id);
+        if (this.send != null) {
+            throw new IllegalStateException(
+                    "Attempt to begin a send operation with prior send operation still in progress, connection id is " +
+                            id);
+        }
+        //设置发送缓冲区
         this.send = send;
+        //注册写事件
         this.transportLayer.addInterestOps(SelectionKey.OP_WRITE);
     }
 
@@ -205,6 +224,7 @@ public class KafkaChannel {
         return result;
     }
 
+    // TODO: 2018/3/6 by zmyer
     public Send write() throws IOException {
         Send result = null;
         if (send != null && send(send)) {
@@ -217,6 +237,7 @@ public class KafkaChannel {
     /**
      * Accumulates network thread time for this channel.
      */
+    // TODO: 2018/3/6 by zmyer
     public void addNetworkThreadTimeNanos(long nanos) {
         networkThreadTimeNanos += nanos;
     }
@@ -235,10 +256,12 @@ public class KafkaChannel {
         return receive.readFrom(transportLayer);
     }
 
+    // TODO: 2018/3/6 by zmyer
     private boolean send(Send send) throws IOException {
         send.writeTo(transportLayer);
-        if (send.completed())
+        if (send.completed()) {
             transportLayer.removeInterestOps(SelectionKey.OP_WRITE);
+        }
 
         return send.completed();
     }

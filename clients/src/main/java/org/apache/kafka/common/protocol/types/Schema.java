@@ -24,6 +24,7 @@ import java.util.Objects;
 /**
  * The schema for a compound record definition
  */
+// TODO: 2018/3/5 by zmyer
 public class Schema extends Type {
 
     private final BoundField[] fields;

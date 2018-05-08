@@ -157,7 +157,9 @@ public class FileRecords extends AbstractRecords implements Closeable {
     /**
      * Commit all written data to the physical disk
      */
+    // TODO: 2018/3/9 by zmyer
     public void flush() throws IOException {
+        //强制刷新channel
         channel.force(true);
     }
 
@@ -183,8 +185,10 @@ public class FileRecords extends AbstractRecords implements Closeable {
      * @return  {@code true} if the file was deleted by this method; {@code false} if the file could not be deleted
      *          because it did not exist
      */
+    // TODO: 2018/3/9 by zmyer
     public boolean deleteIfExists() throws IOException {
         Utils.closeQuietly(channel, "FileChannel");
+        //直接删除文件
         return Files.deleteIfExists(file.toPath());
     }
 

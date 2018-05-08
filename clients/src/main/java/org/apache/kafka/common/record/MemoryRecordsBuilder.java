@@ -37,6 +37,7 @@ import static org.apache.kafka.common.utils.Utils.wrapNullable;
  * and the builder is closed (e.g. the Producer), it's important to call `closeForRecordAppends` when the former happens.
  * This will release resources like compression buffers that can be relatively large (64 KB for LZ4).
  */
+// TODO: 2018/3/5 by zmyer
 public class MemoryRecordsBuilder {
     private static final float COMPRESSION_RATE_ESTIMATION_FACTOR = 1.05f;
     private static final DataOutputStream CLOSED_STREAM = new DataOutputStream(new OutputStream() {
@@ -46,42 +47,65 @@ public class MemoryRecordsBuilder {
         }
     });
 
+    //时间戳类型
     private final TimestampType timestampType;
+    //压缩类型
     private final CompressionType compressionType;
     // Used to hold a reference to the underlying ByteBuffer so that we can write the record batch header and access
     // the written bytes. ByteBufferOutputStream allocates a new ByteBuffer if the existing one is not large enough,
     // so it's not safe to hold a direct reference to the underlying ByteBuffer.
+    //存放消息字节输出对象
     private final ByteBufferOutputStream bufferStream;
+    //魔数，标记版本信息
     private final byte magic;
+    //初始位置信息
     private final int initialPosition;
+    //基准offset
     private final long baseOffset;
+    //日志append时间戳
     private final long logAppendTime;
+    //是否是主batch
     private final boolean isControlBatch;
     private final int partitionLeaderEpoch;
+    //写入字节限制
     private final int writeLimit;
+    //batch头部字节数
     private final int batchHeaderSizeInBytes;
 
     // Use a conservative estimate of the compression ratio. The producer overrides this using statistics
     // from previous batches before appending any records.
+    //评估压缩比
     private float estimatedCompressionRatio = 1.0F;
 
     // Used to append records, may compress data on the fly
+    //append字节流对象
     private DataOutputStream appendStream;
+    //是否是事务类型
     private boolean isTransactional;
+    //生产者id
     private long producerId;
+    //
     private short producerEpoch;
+    //基准序列号
     private int baseSequence;
+    //消息未压缩字节大小
     private int uncompressedRecordsSizeInBytes = 0; // Number of bytes (excluding the header) written before compression
+    //record数目
     private int numRecords = 0;
+    //实际压缩比例
     private float actualCompressionRatio = 1;
+    //最大时间戳
     private long maxTimestamp = RecordBatch.NO_TIMESTAMP;
     private long offsetOfMaxTimestamp = -1;
+    //最后的偏移量
     private Long lastOffset = null;
     private Long firstTimestamp = null;
 
+    //record集合
     private MemoryRecords builtRecords;
     private boolean aborted = false;
 
+    // TODO: 2018/3/5 by zmyer
     public MemoryRecordsBuilder(ByteBufferOutputStream bufferStream,
                                 byte magic,
                                 CompressionType compressionType,
@@ -148,6 +172,7 @@ public class MemoryRecordsBuilder {
      *                   when compression is used since size estimates are rough, and in the case that the first
      *                   record added exceeds the size).
      */
+    // TODO: 2018/3/5 by zmyer
     public MemoryRecordsBuilder(ByteBuffer buffer,
                                 byte magic,
                                 CompressionType compressionType,
@@ -194,6 +219,7 @@ public class MemoryRecordsBuilder {
      * Close this builder and return the resulting buffer.
      * @return The built log buffer
      */
+    // TODO: 2018/3/5 by zmyer
     public MemoryRecords build() {
         if (aborted) {
             throw new IllegalStateException("Attempting to build an aborted record batch");
@@ -213,6 +239,7 @@ public class MemoryRecordsBuilder {
      *
      * @return The max timestamp and its offset
      */
+    // TODO: 2018/3/5 by zmyer
     public RecordsInfo info() {
         if (timestampType == TimestampType.LOG_APPEND_TIME) {
             long shallowOffsetOfMaxTimestamp;
@@ -246,6 +273,7 @@ public class MemoryRecordsBuilder {
         return uncompressedRecordsSizeInBytes + batchHeaderSizeInBytes;
     }
 
+    // TODO: 2018/3/5 by zmyer
     public void setProducerState(long producerId, short producerEpoch, int baseSequence, boolean isTransactional) {
         if (isClosed()) {
             // Sequence numbers are assigned when the batch is closed while the accumulator is being drained.
@@ -270,6 +298,7 @@ public class MemoryRecordsBuilder {
      * Release resources required for record appends (e.g. compression buffers). Once this method is called, it's only
      * possible to update the RecordBatch header.
      */
+    // TODO: 2018/3/5 by zmyer
     public void closeForRecordAppends() {
         if (appendStream != CLOSED_STREAM) {
             try {
@@ -282,12 +311,14 @@ public class MemoryRecordsBuilder {
         }
     }
 
+    // TODO: 2018/3/5 by zmyer
     public void abort() {
         closeForRecordAppends();
         buffer().position(initialPosition);
         aborted = true;
     }
 
+    // TODO: 2018/3/5 by zmyer
     public void reopenAndRewriteProducerState(long producerId, short producerEpoch, int baseSequence, boolean isTransactional) {
         if (aborted)
             throw new IllegalStateException("Should not reopen a batch which is already aborted.");
@@ -299,6 +330,7 @@ public class MemoryRecordsBuilder {
     }
 
 
+    // TODO: 2018/3/5 by zmyer
     public void close() {
         if (aborted)
             throw new IllegalStateException("Cannot close MemoryRecordsBuilder as it has already been aborted");
@@ -326,6 +358,7 @@ public class MemoryRecordsBuilder {
         }
     }
 
+    // TODO: 2018/3/5 by zmyer
     private void validateProducerState() {
         if (isTransactional && producerId == RecordBatch.NO_PRODUCER_ID)
             throw new IllegalArgumentException("Cannot write transactional messages without a valid producer ID");
@@ -346,6 +379,7 @@ public class MemoryRecordsBuilder {
      * Write the header to the default batch.
      * @return the written compressed bytes.
      */
+    // TODO: 2018/3/5 by zmyer
     private int writeDefaultBatchHeader() {
         ensureOpenForRecordBatchWrite();
         ByteBuffer buffer = bufferStream.buffer();
@@ -393,6 +427,7 @@ public class MemoryRecordsBuilder {
     /**
      * Append a record and return its checksum for message format v0 and v1, or null for v2 and above.
      */
+    // TODO: 2018/3/5 by zmyer
     private Long appendWithOffset(long offset, boolean isControlRecord, long timestamp, ByteBuffer key,
                                   ByteBuffer value, Header[] headers) {
         try {
@@ -412,10 +447,13 @@ public class MemoryRecordsBuilder {
             if (firstTimestamp == null)
                 firstTimestamp = timestamp;
 
+            //如果版本信息大于V1
             if (magic > RecordBatch.MAGIC_VALUE_V1) {
+                //将消息插入到默认record中
                 appendDefaultRecord(offset, timestamp, key, value, headers);
                 return null;
             } else {
+                //否则插入到LegacyRecord中
                 return appendLegacyRecord(offset, timestamp, key, value);
             }
         } catch (IOException e) {
@@ -445,6 +483,7 @@ public class MemoryRecordsBuilder {
      * @param headers The record headers if there are any
      * @return CRC of the record or null if record-level CRC is not supported for the message format
      */
+    // TODO: 2018/3/5 by zmyer
     public Long appendWithOffset(long offset, long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers) {
         return appendWithOffset(offset, false, timestamp, key, value, headers);
     }
@@ -502,6 +541,7 @@ public class MemoryRecordsBuilder {
      * @param headers The record headers if there are any
      * @return CRC of the record or null if record-level CRC is not supported for the message format
      */
+    // TODO: 2018/3/5 by zmyer
     public Long append(long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers) {
         return appendWithOffset(nextSequentialOffset(), timestamp, key, value, headers);
     }
@@ -525,6 +565,7 @@ public class MemoryRecordsBuilder {
      * @param headers The record headers if there are any
      * @return CRC of the record or null if record-level CRC is not supported for the message format
      */
+    // TODO: 2018/3/5 by zmyer
     public Long append(long timestamp, byte[] key, byte[] value, Header[] headers) {
         return append(timestamp, wrapNullable(key), wrapNullable(value), headers);
     }
@@ -621,6 +662,7 @@ public class MemoryRecordsBuilder {
         appendWithOffset(nextSequentialOffset(), record);
     }
 
+    // TODO: 2018/3/5 by zmyer
     private void appendDefaultRecord(long offset, long timestamp, ByteBuffer key, ByteBuffer value,
                                      Header[] headers) throws IOException {
         ensureOpenForRecordAppend();
@@ -630,16 +672,19 @@ public class MemoryRecordsBuilder {
         recordWritten(offset, timestamp, sizeInBytes);
     }
 
+    // TODO: 2018/3/5 by zmyer
     private long appendLegacyRecord(long offset, long timestamp, ByteBuffer key, ByteBuffer value) throws IOException {
         ensureOpenForRecordAppend();
         if (compressionType == CompressionType.NONE && timestampType == TimestampType.LOG_APPEND_TIME)
             timestamp = logAppendTime;
-
+        //计算消息占用的内存大小
         int size = LegacyRecord.recordSize(magic, key, value);
+        //开始写入消息头部信息
         AbstractLegacyRecordBatch.writeHeader(appendStream, toInnerOffset(offset), size);
 
         if (timestampType == TimestampType.LOG_APPEND_TIME)
             timestamp = logAppendTime;
+        //开始写入消息
         long crc = LegacyRecord.write(appendStream, magic, timestamp, key, value, CompressionType.NONE, timestampType);
         recordWritten(offset, timestamp, size + Records.LOG_OVERHEAD);
         return crc;
@@ -652,6 +697,7 @@ public class MemoryRecordsBuilder {
         return offset;
     }
 
+    // TODO: 2018/3/5 by zmyer
     private void recordWritten(long offset, long timestamp, int size) {
         if (numRecords == Integer.MAX_VALUE)
             throw new IllegalArgumentException("Maximum number of records per batch exceeded, max records: " + Integer.MAX_VALUE);
@@ -659,8 +705,11 @@ public class MemoryRecordsBuilder {
             throw new IllegalArgumentException("Maximum offset delta exceeded, base offset: " + baseOffset +
                     ", last offset: " + offset);
 
+        //统计消息数目
         numRecords += 1;
+        //统计未压缩时占用的内存大小
         uncompressedRecordsSizeInBytes += size;
+        //更新消息偏移量
         lastOffset = offset;
 
         if (magic > RecordBatch.MAGIC_VALUE_V0 && timestamp > maxTimestamp) {
@@ -669,6 +718,7 @@ public class MemoryRecordsBuilder {
         }
     }
 
+    // TODO: 2018/3/5 by zmyer
     private void ensureOpenForRecordAppend() {
         if (appendStream == CLOSED_STREAM)
             throw new IllegalStateException("Tried to append a record, but MemoryRecordsBuilder is closed for record appends");
@@ -705,6 +755,7 @@ public class MemoryRecordsBuilder {
      * Check if we have room for a new record containing the given key/value pair. If no records have been
      * appended, then this returns true.
      */
+    // TODO: 2018/3/5 by zmyer
     public boolean hasRoomFor(long timestamp, byte[] key, byte[] value, Header[] headers) {
         return hasRoomFor(timestamp, wrapNullable(key), wrapNullable(value), headers);
     }
@@ -760,6 +811,7 @@ public class MemoryRecordsBuilder {
         return magic;
     }
 
+    // TODO: 2018/3/5 by zmyer
     private long nextSequentialOffset() {
         return lastOffset == null ? baseOffset : lastOffset + 1;
     }

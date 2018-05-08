@@ -24,6 +24,7 @@ package org.apache.kafka.common.errors;
  * of sent records. For transactional producers, this is a fatal error and you should close the
  * producer.
  */
+// TODO: 2018/3/6 by zmyer
 public class OutOfOrderSequenceException extends ApiException {
 
     public OutOfOrderSequenceException(String msg) {

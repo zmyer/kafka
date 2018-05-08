@@ -40,6 +40,7 @@ case class DeleteRecordsPartitionStatus(requiredOffset: Long,
  * A delayed delete records operation that can be created by the replica manager and watched
  * in the delete records operation purgatory
  */
+// TODO: by zmyer
 class DelayedDeleteRecords(delayMs: Long,
                            deleteRecordsStatus:  Map[TopicPartition, DeleteRecordsPartitionStatus],
                            replicaManager: ReplicaManager,

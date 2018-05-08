@@ -63,32 +63,49 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * This class manages the coordination process with the consumer coordinator.
  */
+// TODO: 2018/3/8 by zmyer
 public final class ConsumerCoordinator extends AbstractCoordinator {
     private final Logger log;
+    //分区分配策略集合
     private final List<PartitionAssignor> assignors;
+    //集群元数据
     private final Metadata metadata;
+    //coordinator节点统计信息
     private final ConsumerCoordinatorMetrics sensors;
+    //订阅状态对象
     private final SubscriptionState subscriptions;
+    //offset提交回调接口
     private final OffsetCommitCallback defaultOffsetCommitCallback;
+    //是否自动提交
     private final boolean autoCommitEnabled;
+    //自动提交时间间隔
     private final int autoCommitIntervalMs;
+    //消费拦截器列表
     private final ConsumerInterceptors<?, ?> interceptors;
+    //是否排查内部topic
     private final boolean excludeInternalTopics;
+    //挂起的异步提交次数
     private final AtomicInteger pendingAsyncCommits;
 
     // this collection must be thread-safe because it is modified from the response handler
     // of offset commit requests, which may be invoked from the heartbeat thread
+    //offset完成提交处理列表
     private final ConcurrentLinkedQueue<OffsetCommitCompletion> completedOffsetCommits;
 
+    //是否主副本
     private boolean isLeader = false;
+    //订阅集合
     private Set<String> joinedSubscription;
+    //分区元数据快照对象
     private MetadataSnapshot metadataSnapshot;
+    //分区分配元数据快照
     private MetadataSnapshot assignmentSnapshot;
     private long nextAutoCommitDeadline;
 
     /**
      * Initialize the coordination manager.
      */
+    // TODO: 2018/3/8 by zmyer
     public ConsumerCoordinator(LogContext logContext,
                                ConsumerNetworkClient client,
                                String groupId,
@@ -139,13 +156,16 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         addMetadataListener();
     }
 
+    // TODO: 2018/3/8 by zmyer
     @Override
     public String protocolType() {
         return ConsumerProtocol.PROTOCOL_TYPE;
     }
 
+    // TODO: 2018/3/8 by zmyer
     @Override
     public List<ProtocolMetadata> metadata() {
+        //设置订阅关系列表
         this.joinedSubscription = subscriptions.subscription();
         List<ProtocolMetadata> metadataList = new ArrayList<>();
         for (PartitionAssignor assignor : assignors) {
@@ -156,21 +176,26 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         return metadataList;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void updatePatternSubscription(Cluster cluster) {
         final Set<String> topicsToSubscribe = new HashSet<>();
 
+        //遍历所有的topic，找到满足订阅条件的topic
         for (String topic : cluster.topics())
             if (subscriptions.subscribedPattern().matcher(topic).matches() &&
                     !(excludeInternalTopics && cluster.internalTopics().contains(topic)))
                 topicsToSubscribe.add(topic);
 
+        //订阅满足条件的topic
         subscriptions.subscribeFromPattern(topicsToSubscribe);
 
         // note we still need to update the topics contained in the metadata. Although we have
         // specified that all topics should be fetched, only those set explicitly will be retained
+        //更新元数据中订阅的topic列表
         metadata.setTopics(subscriptions.groupSubscription());
     }
 
+    // TODO: 2018/3/8 by zmyer
     private void addMetadataListener() {
         this.metadata.addListener(new Metadata.Listener() {
             @Override
@@ -195,6 +220,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         });
     }
 
+    // TODO: 2018/3/8 by zmyer
     private PartitionAssignor lookupAssignor(String name) {
         for (PartitionAssignor assignor : this.assignors) {
             if (assignor.name().equals(name))
@@ -203,6 +229,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         return null;
     }
 
+    // TODO: 2018/3/8 by zmyer
     @Override
     protected void onJoinComplete(int generation,
                                   String memberId,
@@ -212,10 +239,12 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         if (!isLeader)
             assignmentSnapshot = null;
 
+        //查找分区分配策略对象
         PartitionAssignor assignor = lookupAssignor(assignmentStrategy);
         if (assignor == null)
             throw new IllegalStateException("Coordinator selected invalid assignment protocol: " + assignmentStrategy);
 
+        //反序列化分区分区信息
         Assignment assignment = ConsumerProtocol.deserializeAssignment(assignmentBuffer);
         subscriptions.assignFromSubscribed(assignment.partitions());
 
@@ -230,6 +259,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 addedTopics.add(tp.topic());
         }
 
+        //将之前不在订阅组里面的topic都添加进来
         if (!addedTopics.isEmpty()) {
             Set<String> newSubscription = new HashSet<>(subscriptions.subscription());
             Set<String> newJoinedSubscription = new HashSet<>(joinedSubscription);
@@ -242,13 +272,16 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
         // update the metadata and enforce a refresh to make sure the fetcher can start
         // fetching data in the next iteration
+        //设置元数据对象中消费者组里面的topic订阅列表
         this.metadata.setTopics(subscriptions.groupSubscription());
         client.ensureFreshMetadata();
 
         // give the assignor a chance to update internal state based on the received assignment
+        //收到分区分配信息的后续处理
         assignor.onAssignment(assignment);
 
         // reschedule the auto commit starting from now
+        //更新下一次自动提交的截止时间
         this.nextAutoCommitDeadline = time.milliseconds() + autoCommitIntervalMs;
 
         // execute the user's callback after rebalance
@@ -256,6 +289,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         log.info("Setting newly assigned partitions {}", subscriptions.assignedPartitions());
         try {
             Set<TopicPartition> assigned = new HashSet<>(subscriptions.assignedPartitions());
+            //执行rebalance后续回调流程
             listener.onPartitionsAssigned(assigned);
         } catch (WakeupException | InterruptException e) {
             throw e;
@@ -271,15 +305,19 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      *
      * @param now current time in milliseconds
      */
+    // TODO: 2018/3/7 by zmyer
     public void poll(long now, long remainingMs) {
         invokeCompletedOffsetCommitCallbacks();
 
+        //如果是自动分期分配
         if (subscriptions.partitionsAutoAssigned()) {
             if (coordinatorUnknown()) {
+                //如果当前的coordinator节点未知，则需要重新建立连接
                 ensureCoordinatorReady();
                 now = time.milliseconds();
             }
 
+            //判断是否需要重新加入组
             if (needRejoin()) {
                 // due to a race condition between the initial metadata fetch and the initial rebalance,
                 // we need to ensure that the metadata is fresh before joining initially. This ensures
@@ -287,10 +325,12 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 if (subscriptions.hasPatternSubscription())
                     client.ensureFreshMetadata();
 
+                //确保组是活跃状态
                 ensureActiveGroup();
                 now = time.milliseconds();
             }
 
+            //开始发送心跳
             pollHeartbeat(now);
         } else {
             // For manually assigned partitions, if there are no ready nodes, await metadata.
@@ -308,6 +348,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
             }
         }
 
+        //异步提交offset
         maybeAutoCommitOffsetsAsync(now);
     }
 
@@ -316,6 +357,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      * @param now current time in milliseconds
      * @return the maximum time in milliseconds the caller should wait before the next invocation of poll()
      */
+    // TODO: 2018/3/7 by zmyer
     public long timeToNextPoll(long now) {
         if (!autoCommitEnabled)
             return timeToNextHeartbeat(now);
@@ -326,19 +368,25 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         return Math.min(nextAutoCommitDeadline - now, timeToNextHeartbeat(now));
     }
 
+    // TODO: 2018/3/8 by zmyer
     @Override
     protected Map<String, ByteBuffer> performAssignment(String leaderId,
                                                         String assignmentStrategy,
                                                         Map<String, ByteBuffer> allSubscriptions) {
+        //根据提供的分区分配策略，获取指定的分区分配对象
         PartitionAssignor assignor = lookupAssignor(assignmentStrategy);
         if (assignor == null)
             throw new IllegalStateException("Coordinator selected invalid assignment protocol: " + assignmentStrategy);
 
         Set<String> allSubscribedTopics = new HashSet<>();
         Map<String, Subscription> subscriptions = new HashMap<>();
+        //依次遍历每个订阅关系
         for (Map.Entry<String, ByteBuffer> subscriptionEntry : allSubscriptions.entrySet()) {
+            //订阅关系反序列化
             Subscription subscription = ConsumerProtocol.deserializeSubscription(subscriptionEntry.getValue());
+            //将订阅关系插入到订阅列表中
             subscriptions.put(subscriptionEntry.getKey(), subscription);
+            //将所有的topic插入到topic列表中
             allSubscribedTopics.addAll(subscription.topics());
         }
 
@@ -349,12 +397,15 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
         // update metadata (if needed) and keep track of the metadata used for assignment so that
         // we can check after rebalance completion whether anything has changed
+        //可以开始刷新元数据
         client.ensureFreshMetadata();
 
+        //设置leader标记
         isLeader = true;
 
         log.debug("Performing assignment using strategy {} with subscriptions {}", assignor.name(), subscriptions);
 
+        //开始针对topic进行分区分配
         Map<String, Assignment> assignment = assignor.assign(metadata.fetch(), subscriptions);
 
         // user-customized assignor may have created some topics that are not in the subscription list
@@ -367,15 +418,18 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         Set<String> assignedTopics = new HashSet<>();
         for (Assignment assigned : assignment.values()) {
             for (TopicPartition tp : assigned.partitions())
+                //保存所有已经完成分区分配的topic
                 assignedTopics.add(tp.topic());
         }
 
+        //如果已经完成分区分配的topic里面中并不是全部的topic，则需要将这部分topic单独存放起来
         if (!assignedTopics.containsAll(allSubscribedTopics)) {
             Set<String> notAssignedTopics = new HashSet<>(allSubscribedTopics);
             notAssignedTopics.removeAll(assignedTopics);
             log.warn("The following subscribed topics are not assigned to any members: {} ", notAssignedTopics);
         }
 
+        //存在新增的topic的情况
         if (!allSubscribedTopics.containsAll(assignedTopics)) {
             Set<String> newlyAddedTopics = new HashSet<>(assignedTopics);
             newlyAddedTopics.removeAll(allSubscribedTopics);
@@ -388,29 +442,36 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
             client.ensureFreshMetadata();
         }
 
+        //保存分区分配快照
         assignmentSnapshot = metadataSnapshot;
 
         log.debug("Finished assignment for group: {}", assignment);
 
         Map<String, ByteBuffer> groupAssignment = new HashMap<>();
         for (Map.Entry<String, Assignment> assignmentEntry : assignment.entrySet()) {
+            //将分配结果进行序列化保存
             ByteBuffer buffer = ConsumerProtocol.serializeAssignment(assignmentEntry.getValue());
             groupAssignment.put(assignmentEntry.getKey(), buffer);
         }
 
+        //返回分区分配结果
         return groupAssignment;
     }
 
+    // TODO: 2018/3/8 by zmyer
     @Override
     protected void onJoinPrepare(int generation, String memberId) {
         // commit offsets prior to rebalance if auto-commit enabled
+        //首先同步提交一次offset
         maybeAutoCommitOffsetsSync(rebalanceTimeoutMs);
 
         // execute the user's callback before rebalance
+        //获取rebalance监听器
         ConsumerRebalanceListener listener = subscriptions.rebalanceListener();
         log.info("Revoking previously assigned partitions {}", subscriptions.assignedPartitions());
         try {
             Set<TopicPartition> revoked = new HashSet<>(subscriptions.assignedPartitions());
+            //执行rebalance监听器
             listener.onPartitionsRevoked(revoked);
         } catch (WakeupException | InterruptException e) {
             throw e;
@@ -422,6 +483,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         subscriptions.resetGroupSubscription();
     }
 
+    // TODO: 2018/3/8 by zmyer
     @Override
     public boolean needRejoin() {
         if (!subscriptions.partitionsAutoAssigned())
@@ -441,6 +503,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     /**
      * Refresh the committed offsets for provided partitions.
      */
+    // TODO: 2018/3/7 by zmyer
     public void refreshCommittedOffsetsIfNeeded() {
         Set<TopicPartition> missingFetchPositions = subscriptions.missingFetchPositions();
         Map<TopicPartition, OffsetAndMetadata> offsets = fetchCommittedOffsets(missingFetchPositions);
@@ -457,27 +520,35 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      * @param partitions The partitions to fetch offsets for
      * @return A map from partition to the committed offset
      */
+    // TODO: 2018/3/7 by zmyer
     public Map<TopicPartition, OffsetAndMetadata> fetchCommittedOffsets(Set<TopicPartition> partitions) {
         if (partitions.isEmpty())
             return Collections.emptyMap();
 
         while (true) {
+            //确保消费端的coordinator对象准备就绪
             ensureCoordinatorReady();
 
             // contact coordinator to fetch committed offsets
+            //向服务器发送获取offset请求
             RequestFuture<Map<TopicPartition, OffsetAndMetadata>> future = sendOffsetFetchRequest(partitions);
+            //开始发送请求
             client.poll(future);
 
+            //发送成功，则返回topic分区offset详细信息
             if (future.succeeded())
                 return future.value();
 
+            //如果失败，则处理异常
             if (!future.isRetriable())
                 throw future.exception();
 
+            //等待
             time.sleep(retryBackoffMs);
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     public void close(long timeoutMs) {
         // we do not need to re-enable wakeups since we are closing already
         client.disableWakeups();
@@ -485,6 +556,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         long now = time.milliseconds();
         long endTimeMs = now + timeoutMs;
         try {
+            //同步提交offset
             maybeAutoCommitOffsetsSync(timeoutMs);
             now = time.milliseconds();
             if (pendingAsyncCommits.get() > 0 && endTimeMs > now) {
@@ -496,9 +568,11 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         }
     }
 
+    // TODO: 2018/3/7 by zmyer
     // visible for testing
     void invokeCompletedOffsetCommitCallbacks() {
         while (true) {
+            //依次处理每个offset提交完成的事件
             OffsetCommitCompletion completion = completedOffsetCommits.poll();
             if (completion == null)
                 break;
@@ -506,10 +580,12 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         }
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void commitOffsetsAsync(final Map<TopicPartition, OffsetAndMetadata> offsets, final OffsetCommitCallback callback) {
         invokeCompletedOffsetCommitCallbacks();
 
         if (!coordinatorUnknown()) {
+            //coordinator节点存在，则直接异步提交offset
             doCommitOffsetsAsync(offsets, callback);
         } else {
             // we don't know the current coordinator, so try to find it and then send the commit
@@ -518,17 +594,22 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
             // coordinator lookup request. This is fine because the listeners will be invoked in
             // the same order that they were added. Note also that AbstractCoordinator prevents
             // multiple concurrent coordinator lookup requests.
+            //递增已提交的offset次数
             pendingAsyncCommits.incrementAndGet();
+            //开始查找coordinator节点
             lookupCoordinator().addListener(new RequestFutureListener<Void>() {
                 @Override
                 public void onSuccess(Void value) {
+                    //查找成功，则接下去开始异步提交offset
                     pendingAsyncCommits.decrementAndGet();
                     doCommitOffsetsAsync(offsets, callback);
+                    //发送消息非中断
                     client.pollNoWakeup();
                 }
 
                 @Override
                 public void onFailure(RuntimeException e) {
+                    //查找失败，则将失败结果插入到offset提交完成队列中
                     pendingAsyncCommits.decrementAndGet();
                     completedOffsetCommits.add(new OffsetCommitCompletion(callback, offsets,
                             new RetriableCommitFailedException(e)));
@@ -542,7 +623,9 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         client.pollNoWakeup();
     }
 
+    // TODO: 2018/3/7 by zmyer
     private void doCommitOffsetsAsync(final Map<TopicPartition, OffsetAndMetadata> offsets, final OffsetCommitCallback callback) {
+        //发送offsett提交请求
         RequestFuture<Void> future = sendOffsetCommitRequest(offsets);
         final OffsetCommitCallback cb = callback == null ? defaultOffsetCommitCallback : callback;
         future.addListener(new RequestFutureListener<Void>() {
@@ -551,6 +634,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 if (interceptors != null)
                     interceptors.onCommit(offsets);
 
+                //将提交成功的结果插入到结果队列中
                 completedOffsetCommits.add(new OffsetCommitCompletion(cb, offsets, null));
             }
 
@@ -561,6 +645,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 if (e instanceof RetriableException)
                     commitException = new RetriableCommitFailedException(e);
 
+                //将提交失败的结果插入到结果队列中
                 completedOffsetCommits.add(new OffsetCommitCompletion(cb, offsets, commitException));
             }
         });
@@ -576,6 +661,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      * @return If the offset commit was successfully sent and a successful response was received from
      *         the coordinator
      */
+    // TODO: 2018/3/8 by zmyer
     public boolean commitOffsetsSync(Map<TopicPartition, OffsetAndMetadata> offsets, long timeoutMs) {
         invokeCompletedOffsetCommitCallbacks();
 
@@ -587,13 +673,16 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         long remainingMs = timeoutMs;
         do {
             if (coordinatorUnknown()) {
+                //如果coordinator未知，则直接退出
                 if (!ensureCoordinatorReady(now, remainingMs))
                     return false;
 
                 remainingMs = timeoutMs - (time.milliseconds() - startMs);
             }
 
+            //开始发送提交offset请求
             RequestFuture<Void> future = sendOffsetCommitRequest(offsets);
+            //正式发送请求
             client.poll(future, remainingMs);
 
             // We may have had in-flight offset commits when the synchronous commit began. If so, ensure that
@@ -601,15 +690,18 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
             // the offset commits were applied.
             invokeCompletedOffsetCommitCallbacks();
 
+            //如果发送成功
             if (future.succeeded()) {
                 if (interceptors != null)
                     interceptors.onCommit(offsets);
                 return true;
             }
 
+            //发送失败
             if (future.failed() && !future.isRetriable())
                 throw future.exception();
 
+            //退避等待重试
             time.sleep(retryBackoffMs);
 
             now = time.milliseconds();
@@ -619,12 +711,14 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         return false;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void maybeAutoCommitOffsetsAsync(long now) {
         if (autoCommitEnabled && now >= nextAutoCommitDeadline) {
             doAutoCommitOffsetsAsync();
         }
     }
 
+    // TODO: 2018/3/7 by zmyer
     private void doAutoCommitOffsetsAsync() {
         Map<TopicPartition, OffsetAndMetadata> allConsumedOffsets = subscriptions.allConsumed();
         log.debug("Sending asynchronous auto-commit of offsets {}", allConsumedOffsets);
@@ -646,11 +740,14 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         });
     }
 
+    // TODO: 2018/3/8 by zmyer
     private void maybeAutoCommitOffsetsSync(long timeoutMs) {
         if (autoCommitEnabled) {
+            //获取所有的topic分区offset信息
             Map<TopicPartition, OffsetAndMetadata> allConsumedOffsets = subscriptions.allConsumed();
             try {
                 log.debug("Sending synchronous auto-commit of offsets {}", allConsumedOffsets);
+                //同步刷新offset
                 if (!commitOffsetsSync(allConsumedOffsets, timeoutMs))
                     log.debug("Auto-commit of offsets {} timed out before completion", allConsumedOffsets);
             } catch (WakeupException | InterruptException e) {
@@ -664,6 +761,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     private class DefaultOffsetCommitCallback implements OffsetCommitCallback {
         @Override
         public void onComplete(Map<TopicPartition, OffsetAndMetadata> offsets, Exception exception) {
@@ -680,10 +778,12 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      * @param offsets The list of offsets per partition that should be committed.
      * @return A request future whose value indicates whether the commit was successful or not
      */
+    // TODO: 2018/3/8 by zmyer
     private RequestFuture<Void> sendOffsetCommitRequest(final Map<TopicPartition, OffsetAndMetadata> offsets) {
         if (offsets.isEmpty())
             return RequestFuture.voidSuccess();
 
+        //检查coordinator节点是否存在
         Node coordinator = checkAndGetCoordinator();
         if (coordinator == null)
             return RequestFuture.coordinatorNotAvailable();
@@ -695,10 +795,12 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
             if (offsetAndMetadata.offset() < 0) {
                 return RequestFuture.failure(new IllegalArgumentException("Invalid offset: " + offsetAndMetadata.offset()));
             }
+            //将待提交的offset信息插入到请求对象中
             offsetData.put(entry.getKey(), new OffsetCommitRequest.PartitionData(
                     offsetAndMetadata.offset(), offsetAndMetadata.metadata()));
         }
 
+        //获取代信息
         final Generation generation;
         if (subscriptions.partitionsAutoAssigned())
             generation = generation();
@@ -710,6 +812,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         if (generation == null)
             return RequestFuture.failure(new CommitFailedException());
 
+        //构建提交offset请求对象
         OffsetCommitRequest.Builder builder = new OffsetCommitRequest.Builder(this.groupId, offsetData).
                 setGenerationId(generation.generationId).
                 setMemberId(generation.memberId).
@@ -717,18 +820,21 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
         log.trace("Sending OffsetCommit request with {} to coordinator {}", offsets, coordinator);
 
+        //开始发送请求
         return client.send(coordinator, builder)
                 .compose(new OffsetCommitResponseHandler(offsets));
     }
 
+    // TODO: 2018/3/8 by zmyer
     private class OffsetCommitResponseHandler extends CoordinatorResponseHandler<OffsetCommitResponse, Void> {
-
+        //记录提交offset的信息
         private final Map<TopicPartition, OffsetAndMetadata> offsets;
 
         private OffsetCommitResponseHandler(Map<TopicPartition, OffsetAndMetadata> offsets) {
             this.offsets = offsets;
         }
 
+        // TODO: 2018/3/8 by zmyer
         @Override
         public void handle(OffsetCommitResponse commitResponse, RequestFuture<Void> future) {
             sensors.commitLatency.record(response.requestLatencyMs());
@@ -736,7 +842,9 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
             for (Map.Entry<TopicPartition, Errors> entry : commitResponse.responseData().entrySet()) {
                 TopicPartition tp = entry.getKey();
+                //获取指定分区的offset信息
                 OffsetAndMetadata offsetAndMetadata = this.offsets.get(tp);
+                //获取对应的offset
                 long offset = offsetAndMetadata.offset();
 
                 Errors error = entry.getValue();
@@ -798,9 +906,11 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      * @param partitions The set of partitions to get offsets for.
      * @return A request future containing the committed offsets.
      */
+    // TODO: 2018/3/7 by zmyer
     private RequestFuture<Map<TopicPartition, OffsetAndMetadata>> sendOffsetFetchRequest(Set<TopicPartition> partitions) {
         Node coordinator = checkAndGetCoordinator();
         if (coordinator == null)
+            //coordinator不存在，直接异常
             return RequestFuture.coordinatorNotAvailable();
 
         log.debug("Fetching committed offsets for partitions: {}", partitions);
@@ -809,11 +919,14 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 new ArrayList<>(partitions));
 
         // send the request with a callback
+        //开始发送请求offset
         return client.send(coordinator, requestBuilder)
                 .compose(new OffsetFetchResponseHandler());
     }
 
+    // TODO: 2018/3/7 by zmyer
     private class OffsetFetchResponseHandler extends CoordinatorResponseHandler<OffsetFetchResponse, Map<TopicPartition, OffsetAndMetadata>> {
+        // TODO: 2018/3/8 by zmyer
         @Override
         public void handle(OffsetFetchResponse response, RequestFuture<Map<TopicPartition, OffsetAndMetadata>> future) {
             if (response.hasError()) {
@@ -861,6 +974,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     private class ConsumerCoordinatorMetrics {
         private final String metricGrpName;
         private final Sensor commitLatency;
@@ -889,6 +1003,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     private static class MetadataSnapshot {
         private final Map<String, Integer> partitionsPerTopic;
 
@@ -913,11 +1028,13 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         }
     }
 
+    // TODO: 2018/3/7 by zmyer
     private static class OffsetCommitCompletion {
         private final OffsetCommitCallback callback;
         private final Map<TopicPartition, OffsetAndMetadata> offsets;
         private final Exception exception;
 
+        // TODO: 2018/3/7 by zmyer
         private OffsetCommitCompletion(OffsetCommitCallback callback, Map<TopicPartition, OffsetAndMetadata> offsets, Exception exception) {
             this.callback = callback;
             this.offsets = offsets;

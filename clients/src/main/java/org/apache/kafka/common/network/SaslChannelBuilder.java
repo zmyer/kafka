@@ -48,6 +48,7 @@ import java.util.Set;
 
 import javax.security.auth.Subject;
 
+// TODO: 2018/3/5 by zmyer
 public class SaslChannelBuilder implements ChannelBuilder, ListenerReconfigurable {
     private static final Logger log = LoggerFactory.getLogger(SaslChannelBuilder.class);
 

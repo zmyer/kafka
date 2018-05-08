@@ -71,6 +71,7 @@ import static org.apache.kafka.common.record.RecordBatch.NO_TIMESTAMP;
  * The background thread that handles the sending of produce requests to the Kafka cluster. This thread makes metadata
  * requests to renew its view of the cluster and then sends produce requests to the appropriate nodes.
  */
+// TODO: 2018/3/6 by zmyer
 public class Sender implements Runnable {
 
     private final Logger log;
@@ -120,6 +121,7 @@ public class Sender implements Runnable {
     /* all the state related to transactions, in particular the producer id, producer epoch, and sequence numbers */
     private final TransactionManager transactionManager;
 
+    // TODO: 2018/3/6 by zmyer
     public Sender(LogContext logContext,
                   KafkaClient client,
                   Metadata metadata,
@@ -154,6 +156,7 @@ public class Sender implements Runnable {
     /**
      * The main run loop for the sender thread
      */
+    // TODO: 2018/3/6 by zmyer
     public void run() {
         log.debug("Starting Kafka producer I/O thread.");
 
@@ -182,9 +185,11 @@ public class Sender implements Runnable {
             // We need to fail all the incomplete batches and wake up the threads waiting on
             // the futures.
             log.debug("Aborting incomplete batches due to forced shutdown");
+            //强制关闭sender,清空未完成的batch列表
             this.accumulator.abortIncompleteBatches();
         }
         try {
+            //关闭客户端
             this.client.close();
         } catch (Exception e) {
             log.error("Failed to close network client", e);
@@ -198,6 +203,7 @@ public class Sender implements Runnable {
      *
      * @param now The current POSIX time in milliseconds
      */
+    // TODO: 2018/3/6 by zmyer
     void run(long now) {
         if (transactionManager != null) {
             try {
@@ -235,14 +241,18 @@ public class Sender implements Runnable {
             }
         }
 
+        //开始发送数据
         long pollTimeout = sendProducerData(now);
         client.poll(pollTimeout, now);
     }
 
+    // TODO: 2018/3/6 by zmyer
     private long sendProducerData(long now) {
+        //读取集群信息
         Cluster cluster = metadata.fetch();
 
         // get the list of partitions with data ready to send
+        //从消息聚集器中读取可以发送的消息batch
         RecordAccumulator.ReadyCheckResult result = this.accumulator.ready(cluster, now);
 
         // if there are any partitions whose leaders are not known yet, force metadata update
@@ -251,7 +261,9 @@ public class Sender implements Runnable {
             // topics which may have expired. Add the topic again to metadata to ensure it is included
             // and request metadata update, since there are messages to send to the topic.
             for (String topic : result.unknownLeaderTopics)
+                //统计所有位置leader副本的topic
                 this.metadata.add(topic);
+            //重新请求元数据
             this.metadata.requestUpdate();
         }
 
@@ -261,12 +273,15 @@ public class Sender implements Runnable {
         while (iter.hasNext()) {
             Node node = iter.next();
             if (!this.client.ready(node, now)) {
+                //将未准备就绪的连接删除掉
                 iter.remove();
+                //计算未准备就绪的超时时间
                 notReadyTimeout = Math.min(notReadyTimeout, this.client.connectionDelay(node, now));
             }
         }
 
         // create produce requests
+        //从消息聚集器中读取待发送消息batch
         Map<Integer, List<ProducerBatch>> batches = this.accumulator.drain(cluster, result.readyNodes,
                 this.maxRequestSize, now);
         if (guaranteeMessageOrder) {
@@ -277,6 +292,7 @@ public class Sender implements Runnable {
             }
         }
 
+        //获取所有已经超时的batch列表
         List<ProducerBatch> expiredBatches = this.accumulator.expiredBatches(this.requestTimeout, now);
         // Reset the producer id if an expired batch has previously been sent to the broker. Also update the metrics
         // for expired batches. see the documentation of @TransactionState.resetProducerId to understand why
@@ -284,6 +300,7 @@ public class Sender implements Runnable {
         if (!expiredBatches.isEmpty())
             log.trace("Expired {} batches in accumulator", expiredBatches.size());
         for (ProducerBatch expiredBatch : expiredBatches) {
+            //开始处理所有超时的batch
             failBatch(expiredBatch, -1, NO_TIMESTAMP, expiredBatch.timeoutException(), false);
             if (transactionManager != null && expiredBatch.inRetry()) {
                 // This ensures that no new batches are drained until the current in flight batches are fully resolved.
@@ -291,6 +308,7 @@ public class Sender implements Runnable {
             }
         }
 
+        //更新发送请求日志统计信息
         sensors.updateProduceRequestMetrics(batches);
 
         // If we have any nodes that are ready to send + have sendable data, poll with 0 timeout so this can immediately
@@ -306,11 +324,13 @@ public class Sender implements Runnable {
             // otherwise the select time will be the time difference between now and the metadata expiry time;
             pollTimeout = 0;
         }
+        //开始发送batch
         sendProduceRequests(batches, now);
 
         return pollTimeout;
     }
 
+    // TODO: 2018/3/7 by zmyer
     private boolean maybeSendTransactionalRequest(long now) {
         if (transactionManager.isCompleting() && accumulator.hasIncomplete()) {
             if (transactionManager.isAborting())
@@ -387,6 +407,7 @@ public class Sender implements Runnable {
     /**
      * Start closing the sender (won't actually complete until all data is sent out)
      */
+    // TODO: 2018/3/7 by zmyer
     public void initiateClose() {
         // Ensure accumulator is closed first to guarantee that no more appends are accepted after
         // breaking from the sender loop. Otherwise, we may miss some callbacks when shutting down.
@@ -398,11 +419,13 @@ public class Sender implements Runnable {
     /**
      * Closes the sender without sending out any pending messages.
      */
+    // TODO: 2018/3/7 by zmyer
     public void forceClose() {
         this.forceClose = true;
         initiateClose();
     }
 
+    // TODO: 2018/3/7 by zmyer
     private ClientResponse sendAndAwaitInitProducerIdRequest(Node node) throws IOException {
         String nodeId = node.idString();
         InitProducerIdRequest.Builder builder = new InitProducerIdRequest.Builder(null);
@@ -410,6 +433,7 @@ public class Sender implements Runnable {
         return NetworkClientUtils.sendAndReceive(client, request, time);
     }
 
+    // TODO: 2018/3/7 by zmyer
     private Node awaitLeastLoadedNodeReady(long remainingTimeMs) throws IOException {
         Node node = client.leastLoadedNode(time.milliseconds());
         if (node != null && NetworkClientUtils.awaitReady(client, node, time, remainingTimeMs)) {
@@ -418,6 +442,7 @@ public class Sender implements Runnable {
         return null;
     }
 
+    // TODO: 2018/3/6 by zmyer
     private void maybeWaitForProducerId() {
         while (!transactionManager.hasProducerId() && !transactionManager.hasError()) {
             try {
@@ -456,6 +481,7 @@ public class Sender implements Runnable {
     /**
      * Handle a produce response
      */
+    // TODO: 2018/3/6 by zmyer
     private void handleProduceResponse(ClientResponse response, Map<TopicPartition, ProducerBatch> batches, long now) {
         RequestHeader requestHeader = response.requestHeader();
         int correlationId = requestHeader.correlationId();
@@ -463,21 +489,25 @@ public class Sender implements Runnable {
             log.trace("Cancelled request with header {} due to node {} being disconnected",
                     requestHeader, response.destination());
             for (ProducerBatch batch : batches.values())
+                //处理网络异常下的batch
                 completeBatch(batch, new ProduceResponse.PartitionResponse(Errors.NETWORK_EXCEPTION), correlationId, now);
         } else if (response.versionMismatch() != null) {
             log.warn("Cancelled request {} due to a version mismatch with node {}",
                     response, response.destination(), response.versionMismatch());
             for (ProducerBatch batch : batches.values())
+                //处理版本不匹配下的batch
                 completeBatch(batch, new ProduceResponse.PartitionResponse(Errors.UNSUPPORTED_VERSION), correlationId, now);
         } else {
             log.trace("Received produce response from node {} with correlation id {}", response.destination(), correlationId);
             // if we have a response, parse it
             if (response.hasResponse()) {
+                //获取应答消息
                 ProduceResponse produceResponse = (ProduceResponse) response.responseBody();
                 for (Map.Entry<TopicPartition, ProduceResponse.PartitionResponse> entry : produceResponse.responses().entrySet()) {
                     TopicPartition tp = entry.getKey();
                     ProduceResponse.PartitionResponse partResp = entry.getValue();
                     ProducerBatch batch = batches.get(tp);
+                    //正确发送batch处理
                     completeBatch(batch, partResp, correlationId, now);
                 }
                 this.sensors.recordLatency(response.destination(), response.requestLatencyMs());
@@ -498,6 +528,7 @@ public class Sender implements Runnable {
      * @param correlationId The correlation id for the request
      * @param now The current POSIX timestamp in milliseconds
      */
+    // TODO: 2018/3/6 by zmyer
     private void completeBatch(ProducerBatch batch, ProduceResponse.PartitionResponse response, long correlationId,
                                long now) {
         Errors error = response.error;
@@ -513,10 +544,14 @@ public class Sender implements Runnable {
                      error);
             if (transactionManager != null)
                 transactionManager.removeInFlightBatch(batch);
+            //如果发送的batch太大时，需要针对batch进行拆分
             this.accumulator.splitAndReenqueue(batch);
+            //释放掉之前的batch内存空间
             this.accumulator.deallocate(batch);
+            //记录batch拆分信息
             this.sensors.recordBatchSplit();
         } else if (error != Errors.NONE) {
+            //判断是否可以重试
             if (canRetry(batch, response)) {
                 log.warn("Got error produce response with correlation id {} on topic-partition {}, retrying ({} attempts left). Error: {}",
                         correlationId,
@@ -524,14 +559,17 @@ public class Sender implements Runnable {
                         this.retries - batch.attempts() - 1,
                         error);
                 if (transactionManager == null) {
+                    //重新将batch插入待发送队列中
                     reenqueueBatch(batch, now);
                 } else if (transactionManager.hasProducerIdAndEpoch(batch.producerId(), batch.producerEpoch())) {
                     // If idempotence is enabled only retry the request if the current producer id is the same as
                     // the producer id of the batch.
                     log.debug("Retrying batch to topic-partition {}. ProducerId: {}; Sequence number : {}",
                             batch.topicPartition, batch.producerId(), batch.baseSequence());
+                    //重新将batch插入发送队列
                     reenqueueBatch(batch, now);
                 } else {
+                    //否则针对发送失败的batch进行下一步处理
                     failBatch(batch, response, new OutOfOrderSequenceException("Attempted to retry sending a " +
                             "batch but the producer id changed from " + batch.producerId() + " to " +
                             transactionManager.producerIdAndEpoch().producerId + " in the mean time. This batch will be dropped."), false);
@@ -542,6 +580,7 @@ public class Sender implements Runnable {
                 // the correct offset and timestamp.
                 //
                 // The only thing we can do is to return success to the user and not return a valid offset and timestamp.
+                //如果是重复序列号，则直接返回
                 completeBatch(batch, response);
             } else {
                 final RuntimeException exception;
@@ -554,6 +593,7 @@ public class Sender implements Runnable {
                 // tell the user the result of their request. We only adjust sequence numbers if the batch didn't exhaust
                 // its retries -- if it did, we don't know whether the sequence number was accepted or not, and
                 // thus it is not safe to reassign the sequence.
+                //batch发送失败
                 failBatch(batch, response, exception, batch.attempts() < this.retries);
             }
             if (error.exception() instanceof InvalidMetadataException) {
@@ -564,6 +604,7 @@ public class Sender implements Runnable {
             }
 
         } else {
+            //batch发送成功
             completeBatch(batch, response);
         }
 
@@ -572,11 +613,15 @@ public class Sender implements Runnable {
             this.accumulator.unmutePartition(batch.topicPartition);
     }
 
+    // TODO: 2018/3/6 by zmyer
     private void reenqueueBatch(ProducerBatch batch, long currentTimeMs) {
+        //将batch插入到消息聚合器中
         this.accumulator.reenqueue(batch, currentTimeMs);
+        //更新记录日志
         this.sensors.recordRetries(batch.topicPartition.topic(), batch.recordCount);
     }
 
+    // TODO: 2018/3/6 by zmyer
     private void completeBatch(ProducerBatch batch, ProduceResponse.PartitionResponse response) {
         if (transactionManager != null) {
             if (transactionManager.hasProducerIdAndEpoch(batch.producerId(), batch.producerEpoch())) {
@@ -588,14 +633,18 @@ public class Sender implements Runnable {
             transactionManager.removeInFlightBatch(batch);
         }
 
+        //batch发送成功
         if (batch.done(response.baseOffset, response.logAppendTime, null))
+            //释放batch空间
             this.accumulator.deallocate(batch);
     }
 
+    // TODO: 2018/3/6 by zmyer
     private void failBatch(ProducerBatch batch, ProduceResponse.PartitionResponse response, RuntimeException exception, boolean adjustSequenceNumbers) {
         failBatch(batch, response.baseOffset, response.logAppendTime, exception, adjustSequenceNumbers);
     }
 
+    // TODO: 2018/3/6 by zmyer
     private void failBatch(ProducerBatch batch, long baseOffset, long logAppendTime, RuntimeException exception, boolean adjustSequenceNumbers) {
         if (transactionManager != null) {
             if (exception instanceof OutOfOrderSequenceException
@@ -624,7 +673,9 @@ public class Sender implements Runnable {
 
         this.sensors.recordErrors(batch.topicPartition.topic(), batch.recordCount);
 
+        //当前消息batch发送完毕
         if (batch.done(baseOffset, logAppendTime, exception))
+            //从消息聚集器中删除对应的batch
             this.accumulator.deallocate(batch);
     }
 
@@ -633,6 +684,7 @@ public class Sender implements Runnable {
      * We can also retry OutOfOrderSequence exceptions for future batches, since if the first batch has failed, the future
      * batches are certain to fail with an OutOfOrderSequence exception.
      */
+    // TODO: 2018/3/6 by zmyer
     private boolean canRetry(ProducerBatch batch, ProduceResponse.PartitionResponse response) {
         return batch.attempts() < this.retries &&
                 ((response.error.exception() instanceof RetriableException) ||
@@ -642,14 +694,17 @@ public class Sender implements Runnable {
     /**
      * Transfer the record batches into a list of produce requests on a per-node basis
      */
+    // TODO: 2018/3/6 by zmyer
     private void sendProduceRequests(Map<Integer, List<ProducerBatch>> collated, long now) {
         for (Map.Entry<Integer, List<ProducerBatch>> entry : collated.entrySet())
+            //开始发送消息
             sendProduceRequest(now, entry.getKey(), acks, requestTimeout, entry.getValue());
     }
 
     /**
      * Create a produce request from the given record batches
      */
+    // TODO: 2018/3/6 by zmyer
     private void sendProduceRequest(long now, int destination, short acks, int timeout, List<ProducerBatch> batches) {
         if (batches.isEmpty())
             return;
@@ -659,13 +714,16 @@ public class Sender implements Runnable {
 
         // find the minimum magic version used when creating the record sets
         byte minUsedMagic = apiVersions.maxUsableProduceMagic();
+        //统计当前batch列表中最小的版本号
         for (ProducerBatch batch : batches) {
             if (batch.magic() < minUsedMagic)
                 minUsedMagic = batch.magic();
         }
 
         for (ProducerBatch batch : batches) {
+            //topic分区
             TopicPartition tp = batch.topicPartition;
+            //创建batch对应的memoryrecord
             MemoryRecords records = batch.records();
 
             // down convert if necessary to the minimum magic used. In general, there can be a delay between the time
@@ -676,6 +734,7 @@ public class Sender implements Runnable {
             // not all support the same message format version. For example, if a partition migrates from a broker
             // which is supporting the new magic version to one which doesn't, then we will need to convert.
             if (!records.hasMatchingMagic(minUsedMagic))
+                //如果版本号不对应，则转换
                 records = batch.records().downConvert(minUsedMagic, 0, time).records();
             produceRecordsByPartition.put(tp, records);
             recordsByPartition.put(tp, batch);
@@ -685,6 +744,8 @@ public class Sender implements Runnable {
         if (transactionManager != null && transactionManager.isTransactional()) {
             transactionalId = transactionManager.transactionalId();
         }
+
+        //创建发送请求
         ProduceRequest.Builder requestBuilder = ProduceRequest.Builder.forMagic(minUsedMagic, acks, timeout,
                 produceRecordsByPartition, transactionalId);
         RequestCompletionHandler callback = new RequestCompletionHandler() {
@@ -694,7 +755,9 @@ public class Sender implements Runnable {
         };
 
         String nodeId = Integer.toString(destination);
+        //创建客户端请求对象
         ClientRequest clientRequest = client.newClientRequest(nodeId, requestBuilder, now, acks != 0, callback);
+        //开始发送请求
         client.send(clientRequest, now);
         log.trace("Sent produce request to {}: {}", nodeId, requestBuilder);
     }
@@ -702,10 +765,13 @@ public class Sender implements Runnable {
     /**
      * Wake up the selector associated with this send thread
      */
+
+    // TODO: 2018/3/6 by zmyer
     public void wakeup() {
         this.client.wakeup();
     }
 
+    // TODO: 2018/3/5 by zmyer
     public static Sensor throttleTimeSensor(SenderMetricsRegistry metrics) {
         Sensor produceThrottleTimeSensor = metrics.sensor("produce-throttle-time");
         produceThrottleTimeSensor.add(metrics.produceThrottleTimeAvg, new Avg());
@@ -716,6 +782,7 @@ public class Sender implements Runnable {
     /**
      * A collection of sensors for the sender
      */
+    // TODO: 2018/3/6 by zmyer
     private class SenderMetrics {
         public final Sensor retrySensor;
         public final Sensor errorSensor;
@@ -775,6 +842,7 @@ public class Sender implements Runnable {
             this.batchSplitSensor.add(new Meter(metrics.batchSplitRate, metrics.batchSplitTotal));
         }
 
+        // TODO: 2018/3/6 by zmyer
         private void maybeRegisterTopicMetrics(String topic) {
             // if one sensor of the metrics has been registered for the topic,
             // then all other sensors should have been registered; and vice versa
@@ -813,6 +881,7 @@ public class Sender implements Runnable {
             }
         }
 
+        // TODO: 2018/3/6 by zmyer
         public void updateProduceRequestMetrics(Map<Integer, List<ProducerBatch>> batches) {
             long now = time.milliseconds();
             for (List<ProducerBatch> nodeBatch : batches.values()) {
@@ -857,6 +926,7 @@ public class Sender implements Runnable {
                 topicRetrySensor.record(count, now);
         }
 
+        // TODO: 2018/3/6 by zmyer
         public void recordErrors(String topic, int count) {
             long now = time.milliseconds();
             this.errorSensor.record(count, now);

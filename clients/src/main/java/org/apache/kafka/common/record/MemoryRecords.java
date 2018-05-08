@@ -39,6 +39,7 @@ import java.util.Objects;
  * modifying in-place an existing buffer of record batches. To create a new buffer see {@link MemoryRecordsBuilder},
  * or one of the {@link #builder(ByteBuffer, byte, CompressionType, TimestampType, long)} variants.
  */
+// TODO: 2018/3/5 by zmyer
 public class MemoryRecords extends AbstractRecords {
     private static final Logger log = LoggerFactory.getLogger(MemoryRecords.class);
     public static final MemoryRecords EMPTY = MemoryRecords.readableRecords(ByteBuffer.allocate(0));
@@ -54,6 +55,7 @@ public class MemoryRecords extends AbstractRecords {
 
     private int validBytes = -1;
 
+    // TODO: 2018/3/6 by zmyer
     // Construct a writable memory records
     private MemoryRecords(ByteBuffer buffer) {
         Objects.requireNonNull(buffer, "buffer should not be null");
@@ -112,6 +114,7 @@ public class MemoryRecords extends AbstractRecords {
         return bytes;
     }
 
+    // TODO: 2018/3/6 by zmyer
     @Override
     public ConvertedRecords<MemoryRecords> downConvert(byte toMagic, long firstOffset, Time time) {
         return downConvert(batches(), toMagic, firstOffset, time);
@@ -378,6 +381,7 @@ public class MemoryRecords extends AbstractRecords {
         }
     }
 
+    // TODO: 2018/3/6 by zmyer
     public static MemoryRecords readableRecords(ByteBuffer buffer) {
         return new MemoryRecords(buffer);
     }

@@ -52,35 +52,53 @@ import static org.apache.kafka.common.record.RecordBatch.NO_TIMESTAMP;
  *
  * This class is not thread safe and external synchronization must be used when modifying it
  */
+// TODO: 2018/3/5 by zmyer
 public final class ProducerBatch {
 
     private static final Logger log = LoggerFactory.getLogger(ProducerBatch.class);
 
+    //完成状态信息
     private enum FinalState { ABORTED, FAILED, SUCCEEDED }
 
+    //创建时间
     final long createdMs;
+    //topic分区对象
     final TopicPartition topicPartition;
+    //batch请求发送结果对象
     final ProduceRequestResult produceFuture;
 
+    //消息发送完毕回调列表
     private final List<Thunk> thunks = new ArrayList<>();
+    //MemoryRecords构造器
     private final MemoryRecordsBuilder recordsBuilder;
+    //重试次数
     private final AtomicInteger attempts = new AtomicInteger(0);
+    //是否拆分batch
     private final boolean isSplitBatch;
+    //batch发送完成状态信息
     private final AtomicReference<FinalState> finalState = new AtomicReference<>(null);
 
+    //记录数目
     int recordCount;
+    //记录最大大小
     int maxRecordSize;
+    //最近一次尝试发送的时间戳
     private long lastAttemptMs;
+    //最后一次append时间戳
     private long lastAppendTime;
     private long drainedMs;
     private String expiryErrorMessage;
+    //是否重试
     private boolean retry;
+    //是否重新打
     private boolean reopened = false;
 
+    // TODO: 2018/3/5 by zmyer
     public ProducerBatch(TopicPartition tp, MemoryRecordsBuilder recordsBuilder, long now) {
         this(tp, recordsBuilder, now, false);
     }
 
+    // TODO: 2018/3/5 by zmyer
     public ProducerBatch(TopicPartition tp, MemoryRecordsBuilder recordsBuilder, long now, boolean isSplitBatch) {
         this.createdMs = now;
         this.lastAttemptMs = now;
@@ -100,11 +118,15 @@ public final class ProducerBatch {
      *
      * @return The RecordSend corresponding to this record or null if there isn't sufficient room.
      */
+    // TODO: 2018/3/5 by zmyer
     public FutureRecordMetadata tryAppend(long timestamp, byte[] key, byte[] value, Header[] headers, Callback callback, long now) {
+        //首先需要评估batch是否有足够的空间
         if (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) {
             return null;
         } else {
+            //空间足够，直接将待发送消息插入到batch中
             Long checksum = this.recordsBuilder.append(timestamp, key, value, headers);
+            //计算最大记录大小
             this.maxRecordSize = Math.max(this.maxRecordSize, AbstractRecords.estimateSizeInBytesUpperBound(magic(),
                     recordsBuilder.compressionType(), key, value, headers));
             this.lastAppendTime = now;
@@ -124,6 +146,7 @@ public final class ProducerBatch {
      * This method is only used by {@link #split(int)} when splitting a large batch to smaller ones.
      * @return true if the record has been successfully appended, false otherwise.
      */
+    // TODO: 2018/3/5 by zmyer
     private boolean tryAppendForSplit(long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers, Thunk thunk) {
         if (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) {
             return false;
@@ -149,6 +172,7 @@ public final class ProducerBatch {
      *
      * @param exception The exception to use to complete the future and awaiting callbacks.
      */
+    // TODO: 2018/3/5 by zmyer
     public void abort(RuntimeException exception) {
         if (!finalState.compareAndSet(null, FinalState.ABORTED))
             throw new IllegalStateException("Batch has already been completed in final state " + finalState.get());
@@ -165,6 +189,7 @@ public final class ProducerBatch {
      * @param exception The exception that occurred (or null if the request was successful)
      * @return true if the batch was completed successfully and false if the batch was previously aborted
      */
+    // TODO: 2018/3/5 by zmyer
     public boolean done(long baseOffset, long logAppendTime, RuntimeException exception) {
         final FinalState finalState;
         if (exception == null) {
@@ -175,6 +200,7 @@ public final class ProducerBatch {
             finalState = FinalState.FAILED;
         }
 
+        //更新batch本次发送状态信息
         if (!this.finalState.compareAndSet(null, finalState)) {
             if (this.finalState.get() == FinalState.ABORTED) {
                 log.debug("ProduceResponse returned for {} after batch had already been aborted.", topicPartition);
@@ -184,23 +210,29 @@ public final class ProducerBatch {
             }
         }
 
+        //batch发送完毕处理
         completeFutureAndFireCallbacks(baseOffset, logAppendTime, exception);
         return true;
     }
 
+    // TODO: 2018/3/5 by zmyer
     private void completeFutureAndFireCallbacks(long baseOffset, long logAppendTime, RuntimeException exception) {
         // Set the future before invoking the callbacks as we rely on its state for the `onCompletion` call
         produceFuture.set(baseOffset, logAppendTime, exception);
 
         // execute callbacks
+        //遍历所有的消息回调方法
         for (Thunk thunk : thunks) {
             try {
                 if (exception == null) {
+                    //获取记录元数据信息
                     RecordMetadata metadata = thunk.future.value();
                     if (thunk.callback != null)
+                        //回调完成接口
                         thunk.callback.onCompletion(metadata, null);
                 } else {
                     if (thunk.callback != null)
+                        //回调异常
                         thunk.callback.onCompletion(null, exception);
                 }
             } catch (Exception e) {
@@ -208,17 +240,22 @@ public final class ProducerBatch {
             }
         }
 
+        //本次发送batch完成
         produceFuture.done();
     }
 
+    // TODO: 2018/3/5 by zmyer
     public Deque<ProducerBatch> split(int splitBatchSize) {
         Deque<ProducerBatch> batches = new ArrayDeque<>();
+        //具体的record集合
         MemoryRecords memoryRecords = recordsBuilder.build();
 
+        //record集合迭代器
         Iterator<MutableRecordBatch> recordBatchIter = memoryRecords.batches().iterator();
         if (!recordBatchIter.hasNext())
             throw new IllegalStateException("Cannot split an empty producer batch.");
 
+        //获取每个batch对象
         RecordBatch recordBatch = recordBatchIter.next();
         if (recordBatch.magic() < MAGIC_VALUE_V2 && !recordBatch.isCompressed())
             throw new IllegalArgumentException("Batch splitting cannot be used with non-compressed messages " +
@@ -227,21 +264,29 @@ public final class ProducerBatch {
         if (recordBatchIter.hasNext())
             throw new IllegalArgumentException("A producer batch should only have one record batch.");
 
+        //消息回调迭代器
         Iterator<Thunk> thunkIter = thunks.iterator();
         // We always allocate batch size because we are already splitting a big batch.
         // And we also Retain the create time of the original batch.
         ProducerBatch batch = null;
 
+        //遍历每个record
         for (Record record : recordBatch) {
             assert thunkIter.hasNext();
+            //获取每个消息的回调对象
             Thunk thunk = thunkIter.next();
             if (batch == null)
+                //重新创建batch对象
                 batch = createBatchOffAccumulatorForRecord(record, splitBatchSize);
 
             // A newly created batch can always host the first message.
+            //重新分裂batch对象，如果失败了，会重试一次
             if (!batch.tryAppendForSplit(record.timestamp(), record.key(), record.value(), record.headers(), thunk)) {
+                //将batch插入到队列中
                 batches.add(batch);
+                //重新创建batch对象
                 batch = createBatchOffAccumulatorForRecord(record, splitBatchSize);
+                //重新再分裂一次
                 batch.tryAppendForSplit(record.timestamp(), record.key(), record.value(), record.headers(), thunk);
             }
         }
@@ -250,7 +295,9 @@ public final class ProducerBatch {
         if (batch != null)
             batches.add(batch);
 
+        //消息发送完成，由于batch太大，所以会有异常抛出
         produceFuture.set(ProduceResponse.INVALID_OFFSET, NO_TIMESTAMP, new RecordBatchTooLargeException());
+        //future结束
         produceFuture.done();
 
         if (hasSequence()) {
@@ -261,22 +308,29 @@ public final class ProducerBatch {
                 sequence += newBatch.recordCount;
             }
         }
+        //返回batch集合
         return batches;
     }
 
+    // TODO: 2018/3/5 by zmyer
     private ProducerBatch createBatchOffAccumulatorForRecord(Record record, int batchSize) {
+        //计算初始大小
         int initialSize = Math.max(AbstractRecords.estimateSizeInBytesUpperBound(magic(),
                 recordsBuilder.compressionType(), record.key(), record.value(), record.headers()), batchSize);
+        //分配内存空间
         ByteBuffer buffer = ByteBuffer.allocate(initialSize);
 
         // Note that we intentionally do not set producer state (producerId, epoch, sequence, and isTransactional)
         // for the newly created batch. This will be set when the batch is dequeued for sending (which is consistent
         // with how normal batches are handled).
+        //构建MemoryRecords对象
         MemoryRecordsBuilder builder = MemoryRecords.builder(buffer, magic(), recordsBuilder.compressionType(),
                 TimestampType.CREATE_TIME, 0L);
+        //创建batch对象
         return new ProducerBatch(topicPartition, builder, this.createdMs, true);
     }
 
+    // TODO: 2018/3/5 by zmyer
     public boolean isCompressed() {
         return recordsBuilder.compressionType() != CompressionType.NONE;
     }
@@ -284,8 +338,11 @@ public final class ProducerBatch {
     /**
      * A callback and the associated FutureRecordMetadata argument to pass to it.
      */
+    // TODO: 2018/3/5 by zmyer
     final private static class Thunk {
+        //请求完成回调对象
         final Callback callback;
+        //集群元数据对象
         final FutureRecordMetadata future;
 
         Thunk(Callback callback, FutureRecordMetadata future) {
@@ -294,6 +351,7 @@ public final class ProducerBatch {
         }
     }
 
+    // TODO: 2018/3/5 by zmyer
     @Override
     public String toString() {
         return "ProducerBatch(topicPartition=" + topicPartition + ", recordCount=" + recordCount + ")";
@@ -307,6 +365,7 @@ public final class ProducerBatch {
      * </ol>
      * This methods closes this batch and sets {@code expiryErrorMessage} if the batch has timed out.
      */
+    // TODO: 2018/3/5 by zmyer
     boolean maybeExpire(int requestTimeoutMs, long retryBackoffMs, long now, long lingerMs, boolean isFull) {
         if (!this.inRetry() && isFull && requestTimeoutMs < (now - this.lastAppendTime))
             expiryErrorMessage = (now - this.lastAppendTime) + " ms has passed since last append";
@@ -326,6 +385,7 @@ public final class ProducerBatch {
      * the exception returned by this method.
      * @return An exception indicating the batch expired.
      */
+    // TODO: 2018/3/5 by zmyer
     TimeoutException timeoutException() {
         if (expiryErrorMessage == null)
             throw new IllegalStateException("Batch has not expired");
@@ -336,6 +396,7 @@ public final class ProducerBatch {
         return attempts.get();
     }
 
+    // TODO: 2018/3/5 by zmyer
     void reenqueued(long now) {
         attempts.getAndIncrement();
         lastAttemptMs = Math.max(lastAppendTime, now);
@@ -370,6 +431,7 @@ public final class ProducerBatch {
         return this.retry;
     }
 
+    // TODO: 2018/3/6 by zmyer
     public MemoryRecords records() {
         return recordsBuilder.build();
     }
@@ -386,6 +448,7 @@ public final class ProducerBatch {
         return recordsBuilder.isFull();
     }
 
+    // TODO: 2018/3/5 by zmyer
     public void setProducerState(ProducerIdAndEpoch producerIdAndEpoch, int baseSequence, boolean isTransactional) {
         recordsBuilder.setProducerState(producerIdAndEpoch.producerId, producerIdAndEpoch.epoch, baseSequence, isTransactional);
     }
@@ -399,6 +462,7 @@ public final class ProducerBatch {
      * Release resources required for record appends (e.g. compression buffers). Once this method is called, it's only
      * possible to update the RecordBatch header.
      */
+    // TODO: 2018/3/5 by zmyer
     public void closeForRecordAppends() {
         recordsBuilder.closeForRecordAppends();
     }
@@ -420,6 +484,7 @@ public final class ProducerBatch {
      * it is not safe to invoke the completion callbacks (e.g. because we are holding a lock,
      * {@link RecordAccumulator#abortBatches()}).
      */
+    // TODO: 2018/3/5 by zmyer
     public void abortRecordAppends() {
         recordsBuilder.abort();
     }
@@ -456,6 +521,7 @@ public final class ProducerBatch {
         return recordsBuilder.baseSequence();
     }
 
+    // TODO: 2018/3/5 by zmyer
     public boolean hasSequence() {
         return baseSequence() != RecordBatch.NO_SEQUENCE;
     }

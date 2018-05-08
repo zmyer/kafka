@@ -34,6 +34,7 @@ import java.util.List;
 import static org.apache.kafka.common.protocol.types.Type.BOOLEAN;
 import static org.apache.kafka.common.protocol.types.Type.STRING;
 
+// TODO: 2018/3/5 by zmyer
 public class MetadataRequest extends AbstractRequest {
 
     private static final String TOPICS_KEY_NAME = "topics";
@@ -67,6 +68,7 @@ public class MetadataRequest extends AbstractRequest {
             METADATA_REQUEST_V4, METADATA_REQUEST_V5};
     }
 
+    // TODO: 2018/3/6 by zmyer
     public static class Builder extends AbstractRequest.Builder<MetadataRequest> {
         private static final List<String> ALL_TOPICS = null;
 
@@ -74,6 +76,7 @@ public class MetadataRequest extends AbstractRequest {
         private final List<String> topics;
         private final boolean allowAutoTopicCreation;
 
+        // TODO: 2018/3/6 by zmyer
         public static Builder allTopics() {
             // This never causes auto-creation, but we set the boolean to true because that is the default value when
             // deserializing V2 and older. This way, the value is consistent after serialization and deserialization.

@@ -35,11 +35,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.kafka.common.utils.Utils.getHost;
 import static org.apache.kafka.common.utils.Utils.getPort;
 
+// TODO: 2018/3/5 by zmyer
 public final class ClientUtils {
     private static final Logger log = LoggerFactory.getLogger(ClientUtils.class);
 
     private ClientUtils() {}
 
+    // TODO: 2018/3/7 by zmyer
     public static List<InetSocketAddress> parseAndValidateAddresses(List<String> urls) {
         List<InetSocketAddress> addresses = new ArrayList<>();
         for (String url : urls) {
@@ -67,6 +69,7 @@ public final class ClientUtils {
         return addresses;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public static void closeQuietly(Closeable c, String name, AtomicReference<Throwable> firstException) {
         if (c != null) {
             try {
@@ -82,6 +85,7 @@ public final class ClientUtils {
      * @param config client configs
      * @return configured ChannelBuilder based on the configs.
      */
+    // TODO: 2018/3/5 by zmyer
     public static ChannelBuilder createChannelBuilder(AbstractConfig config) {
         SecurityProtocol securityProtocol = SecurityProtocol.forName(config.getString(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG));
         String clientSaslMechanism = config.getString(SaslConfigs.SASL_MECHANISM);

@@ -28,6 +28,7 @@ import scala.collection.mutable
 import scala.collection.{Map, Set}
 import scala.collection.JavaConverters._
 
+// TODO: by zmyer
 abstract class AbstractFetcherManager(protected val name: String, clientId: String, numFetchers: Int = 1)
   extends Logging with KafkaMetricsGroup {
   // map of (source broker_id, fetcher_id per source broker) => fetcher.
@@ -153,6 +154,7 @@ abstract class AbstractFetcherManager(protected val name: String, clientId: Stri
     info("Removed fetcher for partitions %s".format(partitions.mkString(",")))
   }
 
+  // TODO: by zmyer
   def shutdownIdleFetcherThreads() {
     lock synchronized {
       val keysToBeRemoved = new mutable.HashSet[BrokerIdAndFetcherId]

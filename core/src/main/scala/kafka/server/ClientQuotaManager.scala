@@ -103,6 +103,7 @@ case class QuotaEntity(quotaId: QuotaId, sanitizedUser: String, clientId: String
  * @param quotaType Quota type of this quota manager
  * @param time @Time object to use
  */
+// TODO: by zmyer
 class ClientQuotaManager(private val config: ClientQuotaManagerConfig,
                          private val metrics: Metrics,
                          private val quotaType: QuotaType,

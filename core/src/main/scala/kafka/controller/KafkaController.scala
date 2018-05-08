@@ -40,6 +40,7 @@ import org.apache.zookeeper.KeeperException.{Code, NodeExistsException}
 import scala.collection._
 import scala.util.Try
 
+// TODO: by zmyer
 object KafkaController extends Logging {
   val InitialControllerEpoch = 1
   val InitialControllerEpochZkVersion = 1
@@ -54,6 +55,7 @@ object KafkaController extends Logging {
 
 }
 
+// TODO: by zmyer
 class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Time, metrics: Metrics, initialBrokerInfo: BrokerInfo,
                       tokenManager: DelegationTokenManager, threadNamePrefix: Option[String] = None) extends Logging with KafkaMetricsGroup {
 

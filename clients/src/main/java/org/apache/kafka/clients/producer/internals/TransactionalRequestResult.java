@@ -20,6 +20,7 @@ package org.apache.kafka.clients.producer.internals;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+// TODO: 2018/3/6 by zmyer
 public final class TransactionalRequestResult {
     static final TransactionalRequestResult COMPLETE = new TransactionalRequestResult(new CountDownLatch(0));
 

@@ -21,6 +21,7 @@ import org.apache.kafka.common.utils.Utils;
 /**
  * A container class for offset and timestamp.
  */
+// TODO: 2018/3/8 by zmyer
 public final class OffsetAndTimestamp {
     private final long timestamp;
     private final long offset;

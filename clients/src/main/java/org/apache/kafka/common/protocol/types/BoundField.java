@@ -19,6 +19,7 @@ package org.apache.kafka.common.protocol.types;
 /**
  * A field definition bound to a particular schema.
  */
+// TODO: 2018/3/6 by zmyer
 public class BoundField {
     public final Field def;
     final int index;

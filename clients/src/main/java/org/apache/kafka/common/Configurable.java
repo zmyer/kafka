@@ -21,6 +21,7 @@ import java.util.Map;
 /**
  * A Mix-in style interface for classes that are instantiated by reflection and need to take configuration parameters
  */
+// TODO: 2018/3/5 by zmyer
 public interface Configurable {
 
     /**

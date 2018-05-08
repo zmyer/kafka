@@ -38,6 +38,7 @@ private object Logging {
   private val FatalMarker: Marker = MarkerFactory.getMarker("FATAL")
 }
 
+// TODO: by zmyer
 trait Logging {
 
   protected lazy val logger = Logger(LoggerFactory.getLogger(loggerName))

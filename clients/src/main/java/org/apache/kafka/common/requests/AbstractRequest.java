@@ -25,6 +25,7 @@ import org.apache.kafka.common.protocol.types.Struct;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
+// TODO: 2018/3/5 by zmyer
 public abstract class AbstractRequest extends AbstractRequestResponse {
 
     public static abstract class Builder<T extends AbstractRequest> {
@@ -87,6 +88,7 @@ public abstract class AbstractRequest extends AbstractRequestResponse {
         return version;
     }
 
+    // TODO: 2018/3/6 by zmyer
     public Send toSend(String destination, RequestHeader header) {
         return new NetworkSend(destination, serialize(header));
     }

@@ -51,6 +51,7 @@ import java.util.Map;
  * it encounters a newer version, it parses it using the current format. This basically means
  * that new versions cannot remove or reorder any of the existing fields.
  */
+// TODO: 2018/3/8 by zmyer
 public class ConsumerProtocol {
 
     public static final String PROTOCOL_TYPE = "consumer";
@@ -101,6 +102,7 @@ public class ConsumerProtocol {
         return new PartitionAssignor.Subscription(topics, userData);
     }
 
+    // TODO: 2018/3/8 by zmyer
     public static PartitionAssignor.Assignment deserializeAssignment(ByteBuffer buffer) {
         Struct header = CONSUMER_PROTOCOL_HEADER_SCHEMA.read(buffer);
         Short version = header.getShort(VERSION_KEY_NAME);

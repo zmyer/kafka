@@ -62,6 +62,7 @@ object BrokerEndPoint {
  * Clients should know which security protocol to use from configuration.
  * This allows us to keep the wire protocol with the clients unchanged where the protocol is not needed.
  */
+// TODO: by zmyer
 case class BrokerEndPoint(id: Int, host: String, port: Int) {
 
   def connectionString(): String = formatAddress(host, port)

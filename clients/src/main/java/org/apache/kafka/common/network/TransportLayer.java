@@ -34,6 +34,7 @@ import java.security.Principal;
 
 import org.apache.kafka.common.errors.AuthenticationException;
 
+// TODO: 2018/3/6 by zmyer
 public interface TransportLayer extends ScatteringByteChannel, GatheringByteChannel {
 
     /**

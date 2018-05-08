@@ -23,6 +23,7 @@ import collection.mutable
 import collection.JavaConverters._
 import kafka.common.KafkaException
 
+// TODO: by zmyer
 class Pool[K,V](valueFactory: Option[K => V] = None) extends Iterable[(K, V)] {
 
   private val pool: ConcurrentMap[K, V] = new ConcurrentHashMap[K, V]

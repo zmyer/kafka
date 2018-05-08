@@ -22,6 +22,7 @@ import org.apache.kafka.common.ClusterResourceListener;
 import java.util.ArrayList;
 import java.util.List;
 
+// TODO: 2018/3/5 by zmyer
 public class ClusterResourceListeners {
 
     private final List<ClusterResourceListener> clusterResourceListeners;

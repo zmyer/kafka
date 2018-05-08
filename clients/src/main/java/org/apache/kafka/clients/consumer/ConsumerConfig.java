@@ -38,6 +38,7 @@ import static org.apache.kafka.common.config.ConfigDef.ValidString.in;
 /**
  * The consumer configuration keys
  */
+// TODO: 2018/3/8 by zmyer
 public class ConsumerConfig extends AbstractConfig {
     private static final ConfigDef CONFIG;
 
@@ -458,6 +459,7 @@ public class ConsumerConfig extends AbstractConfig {
         return CommonClientConfigs.postProcessReconnectBackoffConfigs(this, parsedValues);
     }
 
+    // TODO: 2018/3/8 by zmyer
     public static Map<String, Object> addDeserializerToConfig(Map<String, Object> configs,
                                                               Deserializer<?> keyDeserializer,
                                                               Deserializer<?> valueDeserializer) {

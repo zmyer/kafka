@@ -50,6 +50,7 @@ import java.util.regex.Pattern;
  * Note that pause state as well as fetch/consumed positions are not preserved when partition
  * assignment is changed whether directly by the user or through a group rebalance.
  */
+// TODO: 2018/3/7 by zmyer
 public class SubscriptionState {
     private static final String SUBSCRIPTION_EXCEPTION_MESSAGE =
             "Subscription to topics, partitions and pattern are mutually exclusive";
@@ -59,29 +60,38 @@ public class SubscriptionState {
     }
 
     /* the type of subscription */
+    //订阅类型
     private SubscriptionType subscriptionType;
 
     /* the pattern user has requested */
+    //订阅匹配模式
     private Pattern subscribedPattern;
 
     /* the list of topics the user has requested */
+    //topic订阅集合
     private Set<String> subscription;
 
     /* the list of topics the group has subscribed to (set only for the leader on join group completion) */
+    //消费者组订阅列表
     private final Set<String> groupSubscription;
 
     /* the partitions that are currently assigned, note that the order of partition matters (see FetchBuilder for more details) */
+    //topic分区状态列表
     private final PartitionStates<TopicPartitionState> assignment;
 
     /* Default offset reset strategy */
+    //offset重置策略
     private final OffsetResetStrategy defaultResetStrategy;
 
     /* Listeners provide a hook for internal state cleanup (e.g. metrics) on assignment changes */
+    //监听器列表
     private final List<Listener> listeners = new ArrayList<>();
 
     /* User-provided listener to be invoked when assignment changes */
+    //rebalance监听器列表
     private ConsumerRebalanceListener rebalanceListener;
 
+    // TODO: 2018/3/8 by zmyer
     public SubscriptionState(OffsetResetStrategy defaultResetStrategy) {
         this.defaultResetStrategy = defaultResetStrategy;
         this.subscription = Collections.emptySet();
@@ -97,6 +107,7 @@ public class SubscriptionState {
      * when it is not NONE)
      * @param type The given subscription type
      */
+    // TODO: 2018/3/8 by zmyer
     private void setSubscriptionType(SubscriptionType type) {
         if (this.subscriptionType == SubscriptionType.NONE)
             this.subscriptionType = type;
@@ -104,17 +115,22 @@ public class SubscriptionState {
             throw new IllegalStateException(SUBSCRIPTION_EXCEPTION_MESSAGE);
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void subscribe(Set<String> topics, ConsumerRebalanceListener listener) {
         if (listener == null)
             throw new IllegalArgumentException("RebalanceListener cannot be null");
 
+        //设置订阅类型
         setSubscriptionType(SubscriptionType.AUTO_TOPICS);
 
+        //设置rebalance监听器
         this.rebalanceListener = listener;
 
+        //修改订阅关系
         changeSubscription(topics);
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void subscribeFromPattern(Set<String> topics) {
         if (subscriptionType != SubscriptionType.AUTO_PATTERN)
             throw new IllegalArgumentException("Attempt to subscribe from pattern while subscription type set to " +
@@ -123,6 +139,7 @@ public class SubscriptionState {
         changeSubscription(topics);
     }
 
+    // TODO: 2018/3/7 by zmyer
     private void changeSubscription(Set<String> topicsToSubscribe) {
         if (!this.subscription.equals(topicsToSubscribe)) {
             this.subscription = topicsToSubscribe;
@@ -135,6 +152,7 @@ public class SubscriptionState {
      * that it receives metadata updates for all topics that the group is interested in.
      * @param topics The topics to add to the group subscription
      */
+    // TODO: 2018/3/8 by zmyer
     public void groupSubscribe(Collection<String> topics) {
         if (this.subscriptionType == SubscriptionType.USER_ASSIGNED)
             throw new IllegalStateException(SUBSCRIPTION_EXCEPTION_MESSAGE);
@@ -144,6 +162,7 @@ public class SubscriptionState {
     /**
      * Reset the group's subscription to only contain topics subscribed by this consumer.
      */
+    // TODO: 2018/3/8 by zmyer
     public void resetGroupSubscription() {
         this.groupSubscription.retainAll(subscription);
     }
@@ -153,6 +172,7 @@ public class SubscriptionState {
      * note this is different from {@link #assignFromSubscribed(Collection)}
      * whose input partitions are provided from the subscribed topics.
      */
+    // TODO: 2018/3/8 by zmyer
     public void assignFromUser(Set<TopicPartition> partitions) {
         setSubscriptionType(SubscriptionType.USER_ASSIGNED);
 
@@ -174,6 +194,7 @@ public class SubscriptionState {
      * Change the assignment to the specified partitions returned from the coordinator,
      * note this is different from {@link #assignFromUser(Set)} which directly set the assignment from user inputs
      */
+    // TODO: 2018/3/8 by zmyer
     public void assignFromSubscribed(Collection<TopicPartition> assignments) {
         if (!this.partitionsAutoAssigned())
             throw new IllegalArgumentException("Attempt to dynamically assign partitions while manual assignment in use");
@@ -195,6 +216,7 @@ public class SubscriptionState {
         this.assignment.set(assignedPartitionStates);
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void subscribe(Pattern pattern, ConsumerRebalanceListener listener) {
         if (listener == null)
             throw new IllegalArgumentException("RebalanceListener cannot be null");
@@ -213,6 +235,7 @@ public class SubscriptionState {
         return this.subscriptionType == SubscriptionType.NONE;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void unsubscribe() {
         this.subscription = Collections.emptySet();
         this.assignment.clear();
@@ -225,10 +248,12 @@ public class SubscriptionState {
         return this.subscribedPattern;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public Set<String> subscription() {
         return this.subscription;
     }
 
+    // TODO: 2018/3/8 by zmyer
     public Set<TopicPartition> pausedPartitions() {
         HashSet<TopicPartition> paused = new HashSet<>();
         for (PartitionStates.PartitionState<TopicPartitionState> state : assignment.partitionStates()) {
@@ -253,7 +278,9 @@ public class SubscriptionState {
         return this.groupSubscription;
     }
 
+    // TODO: 2018/3/7 by zmyer
     private TopicPartitionState assignedState(TopicPartition tp) {
+        //获取指定分区的状态信息
         TopicPartitionState state = this.assignment.stateValue(tp);
         if (state == null)
             throw new IllegalStateException("No current assignment for partition " + tp);
@@ -264,6 +291,7 @@ public class SubscriptionState {
         assignedState(tp).seek(offset);
     }
 
+    // TODO: 2018/3/7 by zmyer
     public Set<TopicPartition> assignedPartitions() {
         return this.assignment.partitionSet();
     }
@@ -285,6 +313,7 @@ public class SubscriptionState {
         assignedState(tp).position(offset);
     }
 
+    // TODO: 2018/3/7 by zmyer
     public Long position(TopicPartition tp) {
         return assignedState(tp).position;
     }
@@ -314,6 +343,7 @@ public class SubscriptionState {
         assignedState(tp).lastStableOffset = lastStableOffset;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public Map<TopicPartition, OffsetAndMetadata> allConsumed() {
         Map<TopicPartition, OffsetAndMetadata> allConsumed = new HashMap<>();
         for (PartitionStates.PartitionState<TopicPartitionState> state : assignment.partitionStates()) {
@@ -323,6 +353,7 @@ public class SubscriptionState {
         return allConsumed;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void requestOffsetReset(TopicPartition partition, OffsetResetStrategy offsetResetStrategy) {
         assignedState(partition).reset(offsetResetStrategy);
     }
@@ -349,6 +380,7 @@ public class SubscriptionState {
         return assignedState(partition).resetStrategy;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public boolean hasAllFetchPositions() {
         for (PartitionStates.PartitionState<TopicPartitionState> state : assignment.partitionStates()) {
             if (!state.value().hasValidPosition())
@@ -366,6 +398,7 @@ public class SubscriptionState {
         return missing;
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void resetMissingPositions() {
         final Set<TopicPartition> partitionsWithNoOffsets = new HashSet<>();
         for (PartitionStates.PartitionState<TopicPartitionState> state : assignment.partitionStates()) {
@@ -383,6 +416,7 @@ public class SubscriptionState {
             throw new NoOffsetForPartitionException(partitionsWithNoOffsets);
     }
 
+    // TODO: 2018/3/7 by zmyer
     public Set<TopicPartition> partitionsNeedingReset(long nowMs) {
         Set<TopicPartition> partitions = new HashSet<>();
         for (PartitionStates.PartitionState<TopicPartitionState> state : assignment.partitionStates()) {
@@ -393,6 +427,7 @@ public class SubscriptionState {
         return partitions;
     }
 
+    // TODO: 2018/3/8 by zmyer
     public boolean isAssigned(TopicPartition tp) {
         return assignment.contains(tp);
     }
@@ -401,6 +436,7 @@ public class SubscriptionState {
         return isAssigned(tp) && assignedState(tp).paused;
     }
 
+    // TODO: 2018/3/8 by zmyer
     public boolean isFetchable(TopicPartition tp) {
         return isAssigned(tp) && assignedState(tp).isFetchable();
     }
@@ -409,10 +445,12 @@ public class SubscriptionState {
         return isAssigned(tp) && assignedState(tp).hasValidPosition();
     }
 
+    // TODO: 2018/3/8 by zmyer
     public void pause(TopicPartition tp) {
         assignedState(tp).pause();
     }
 
+    // TODO: 2018/3/8 by zmyer
     public void resume(TopicPartition tp) {
         assignedState(tp).resume();
     }
@@ -434,11 +472,13 @@ public class SubscriptionState {
         listeners.add(listener);
     }
 
+    // TODO: 2018/3/7 by zmyer
     public void fireOnAssignment(Set<TopicPartition> assignment) {
         for (Listener listener : listeners)
             listener.onAssignment(assignment);
     }
 
+    // TODO: 2018/3/8 by zmyer
     private static Map<TopicPartition, TopicPartitionState> partitionToStateMap(Collection<TopicPartition> assignments) {
         Map<TopicPartition, TopicPartitionState> map = new HashMap<>(assignments.size());
         for (TopicPartition tp : assignments)
@@ -446,6 +486,7 @@ public class SubscriptionState {
         return map;
     }
 
+    // TODO: 2018/3/7 by zmyer
     private static class TopicPartitionState {
         private Long position; // last consumed position
         private Long highWatermark; // the high watermark from last fetch
@@ -455,6 +496,7 @@ public class SubscriptionState {
         private OffsetResetStrategy resetStrategy;  // the strategy to use if the offset needs resetting
         private Long nextAllowedRetryTimeMs;
 
+        // TODO: 2018/3/8 by zmyer
         TopicPartitionState() {
             this.paused = false;
             this.position = null;
@@ -465,6 +507,7 @@ public class SubscriptionState {
             this.nextAllowedRetryTimeMs = null;
         }
 
+        // TODO: 2018/3/7 by zmyer
         private void reset(OffsetResetStrategy strategy) {
             this.resetStrategy = strategy;
             this.position = null;
@@ -487,6 +530,7 @@ public class SubscriptionState {
             this.nextAllowedRetryTimeMs = nextAllowedRetryTimeMs;
         }
 
+        // TODO: 2018/3/7 by zmyer
         private boolean hasValidPosition() {
             return position != null;
         }
@@ -511,10 +555,12 @@ public class SubscriptionState {
             this.paused = true;
         }
 
+        // TODO: 2018/3/8 by zmyer
         private void resume() {
             this.paused = false;
         }
 
+        // TODO: 2018/3/8 by zmyer
         private boolean isFetchable() {
             return !paused && hasValidPosition();
         }

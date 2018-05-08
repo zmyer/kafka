@@ -34,15 +34,18 @@ import kafka.utils.Logging
  * An offline log directory will stay offline until the broker is restarted.
  *
  */
+// TODO: by zmyer
 class LogDirFailureChannel(logDirNum: Int) extends Logging {
-
+  //线下日志目录集合
   private val offlineLogDirs = new ConcurrentHashMap[String, String]
+  //线下日志目录队列
   private val offlineLogDirQueue = new ArrayBlockingQueue[String](logDirNum)
 
   /*
    * If the given logDir is not already offline, add it to the
    * set of offline log dirs and enqueue it to the logDirFailureEvent queue
    */
+  // TODO: by zmeyr
   def maybeAddOfflineLogDir(logDir: String, msg: => String, e: IOException): Unit = {
     error(msg, e)
     if (offlineLogDirs.putIfAbsent(logDir, logDir) == null) {
@@ -54,6 +57,7 @@ class LogDirFailureChannel(logDirNum: Int) extends Logging {
    * Get the next offline log dir from logDirFailureEvent queue.
    * The method will wait if necessary until a new offline log directory becomes available
    */
+  // TODO: by zmyer
   def takeNextOfflineLogDir(): String = offlineLogDirQueue.take()
 
 }

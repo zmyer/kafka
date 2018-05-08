@@ -25,6 +25,7 @@ import java.util.Map;
  * A callback interface that the user can implement to trigger custom actions when a commit request completes. The callback
  * may be executed in any thread calling {@link Consumer#poll(long) poll()}.
  */
+// TODO: 2018/3/7 by zmyer
 public interface OffsetCommitCallback {
 
     /**
@@ -46,5 +47,6 @@ public interface OffsetCommitCallback {
      * @throws org.apache.kafka.common.KafkaException for any other unrecoverable errors (e.g. if offset metadata
      *             is too large or if the committed offset is invalid).
      */
+    // TODO: 2018/3/8 by zmyer
     void onComplete(Map<TopicPartition, OffsetAndMetadata> offsets, Exception exception);
 }

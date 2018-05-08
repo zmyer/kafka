@@ -36,6 +36,7 @@ case class FetchPartitionStatus(startOffsetMetadata: LogOffsetMetadata, fetchInf
 /**
  * The fetch metadata maintained by the delayed fetch operation
  */
+// TODO: by zmyer
 case class FetchMetadata(fetchMinBytes: Int,
                          fetchMaxBytes: Int,
                          hardMaxBytesLimit: Boolean,
@@ -56,6 +57,7 @@ case class FetchMetadata(fetchMinBytes: Int,
  * A delayed fetch operation that can be created by the replica manager and watched
  * in the fetch operation purgatory
  */
+// TODO: by zmyer
 class DelayedFetch(delayMs: Long,
                    fetchMetadata: FetchMetadata,
                    replicaManager: ReplicaManager,

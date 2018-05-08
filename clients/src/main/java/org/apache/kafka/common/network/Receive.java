@@ -23,6 +23,7 @@ import java.nio.channels.ScatteringByteChannel;
 /**
  * This interface models the in-progress reading of data from a channel to a source identified by an integer id
  */
+// TODO: 2018/3/5 by zmyer
 public interface Receive extends Closeable {
 
     /**

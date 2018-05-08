@@ -35,6 +35,7 @@ import static org.apache.kafka.common.protocol.CommonFields.ERROR_CODE;
 import static org.apache.kafka.common.protocol.CommonFields.THROTTLE_TIME_MS;
 import static org.apache.kafka.common.protocol.types.Type.INT16;
 
+// TODO: 2018/3/6 by zmyer
 public class ApiVersionsResponse extends AbstractResponse {
     private static final String API_VERSIONS_KEY_NAME = "api_versions";
     private static final String API_KEY_NAME = "api_key";
@@ -70,6 +71,7 @@ public class ApiVersionsResponse extends AbstractResponse {
     private final int throttleTimeMs;
     private final Map<Short, ApiVersion> apiKeyToApiVersion;
 
+    // TODO: 2018/3/5 by zmyer
     public static final class ApiVersion {
         public final short apiKey;
         public final short minVersion;

@@ -44,6 +44,7 @@ import org.slf4j.event.Level
  * 2. It is the most general possible utility, not just the thing you needed in one particular place
  * 3. You have tests for it if it is nontrivial in any way
  */
+// TODO: by zmyer
 object CoreUtils extends Logging {
 
   /**
@@ -57,6 +58,7 @@ object CoreUtils extends Logging {
    * @param fun A function
    * @return A Runnable that just executes the function
    */
+  // TODO: by zmyer
   def runnable(fun: => Unit): Runnable =
     new Runnable {
       def run() = fun
@@ -244,6 +246,7 @@ object CoreUtils extends Logging {
   /**
    * Execute the given function inside the lock
    */
+  // TODO: by zmyer
   def inLock[T](lock: Lock)(fun: => T): T = {
     lock.lock()
     try {

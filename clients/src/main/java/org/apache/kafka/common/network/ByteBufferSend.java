@@ -24,6 +24,7 @@ import java.nio.channels.GatheringByteChannel;
 /**
  * A send backed by an array of byte buffers
  */
+// TODO: 2018/3/6 by zmyer
 public class ByteBufferSend implements Send {
 
     private final String destination;

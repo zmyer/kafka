@@ -44,6 +44,7 @@ import scala.collection.Map
 /**
  * Data structure that represents a topic partition. The leader maintains the AR, ISR, CUR, RAR
  */
+// TODO: by zmyer
 class Partition(val topic: String,
                 val partitionId: Int,
                 time: Time,
@@ -185,8 +186,10 @@ class Partition(val topic: String,
     })
   }
 
+  // TODO: by zmyer
   def getReplica(replicaId: Int = localBrokerId): Option[Replica] = Option(allReplicasMap.get(replicaId))
 
+  // TODO: by zmyer
   def leaderReplicaIfLocal: Option[Replica] =
     leaderReplicaIdOpt.filter(_ == localBrokerId).flatMap(getReplica)
 
@@ -454,6 +457,7 @@ class Partition(val topic: String,
    * Note There is no need to acquire the leaderIsrUpdate lock here
    * since all callers of this private API acquire that lock
    */
+  // TODO: by zmyer
   private def maybeIncrementLeaderHW(leaderReplica: Replica, curTime: Long = time.milliseconds): Boolean = {
     val allLogEndOffsets = assignedReplicas.filter { replica =>
       curTime - replica.lastCaughtUpTimeMs <= replicaManager.config.replicaLagTimeMaxMs || inSyncReplicas.contains(replica)
@@ -495,21 +499,26 @@ class Partition(val topic: String,
     replicaManager.tryCompleteDelayedDeleteRecords(requestKey)
   }
 
+  // TODO: by zmyer
   def maybeShrinkIsr(replicaMaxLagTimeMs: Long) {
     val leaderHWIncremented = inWriteLock(leaderIsrUpdateLock) {
       leaderReplicaIfLocal match {
         case Some(leaderReplica) =>
+          //获取所有非同步的replica列表
           val outOfSyncReplicas = getOutOfSyncReplicas(leaderReplica, replicaMaxLagTimeMs)
           if(outOfSyncReplicas.nonEmpty) {
+            //从isr集合中删除那些非同步的replica
             val newInSyncReplicas = inSyncReplicas -- outOfSyncReplicas
             assert(newInSyncReplicas.nonEmpty)
             info("Shrinking ISR from %s to %s".format(inSyncReplicas.map(_.brokerId).mkString(","),
               newInSyncReplicas.map(_.brokerId).mkString(",")))
             // update ISR in zk and in cache
+            //更新isr集合
             updateIsr(newInSyncReplicas)
             // we may need to increment high watermark since ISR could be down to 1
 
             replicaManager.isrShrinkRate.mark()
+            //递增HW水位
             maybeIncrementLeaderHW(leaderReplica)
           } else {
             false
@@ -524,6 +533,7 @@ class Partition(val topic: String,
       tryCompleteDelayedRequests()
   }
 
+  // TODO: by zmyer
   def getOutOfSyncReplicas(leaderReplica: Replica, maxLagMs: Long): Set[Replica] = {
     /**
      * there are two cases that will be handled here -
@@ -536,12 +546,15 @@ class Partition(val topic: String,
      * is violated, that replica is considered to be out of sync
      *
      **/
+      //首先从isr副本集合中删除掉leader副本
     val candidateReplicas = inSyncReplicas - leaderReplica
 
+    //根据超时时间来筛选
     val laggingReplicas = candidateReplicas.filter(r => (time.milliseconds - r.lastCaughtUpTimeMs) > maxLagMs)
     if (laggingReplicas.nonEmpty)
       debug("Lagging replicas are %s".format(laggingReplicas.map(_.brokerId).mkString(",")))
 
+    //返回结果
     laggingReplicas
   }
 
@@ -660,14 +673,20 @@ class Partition(val topic: String,
     }
   }
 
+  // TODO: by zmyer
   private def updateIsr(newIsr: Set[Replica]) {
+    //创建新的leader副本和isr集合
     val newLeaderAndIsr = new LeaderAndIsr(localBrokerId, leaderEpoch, newIsr.map(_.brokerId).toList, zkVersion)
+    //更新leader和isr集合
     val (updateSucceeded, newVersion) = ReplicationUtils.updateLeaderAndIsr(zkClient, topicPartition, newLeaderAndIsr,
       controllerEpoch)
 
     if (updateSucceeded) {
+      //记录irs集合的变化
       replicaManager.recordIsrChange(topicPartition)
+      //设置新的isr集合
       inSyncReplicas = newIsr
+      //更新版本信息
       zkVersion = newVersion
       trace("ISR updated to [%s] and zkVersion updated to [%d]".format(newIsr.mkString(","), zkVersion))
     } else {

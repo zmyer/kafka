@@ -41,6 +41,7 @@ import static java.util.Objects.requireNonNull;
  *    from the authentication context (e.g. from an SSL client certificate), then you need a custom
  *    authorizer which is capable of using the additional group information.
  */
+// TODO: 2018/3/9 by zmyer
 public class KafkaPrincipal implements Principal {
     public static final String USER_TYPE = "User";
     public final static KafkaPrincipal ANONYMOUS = new KafkaPrincipal(KafkaPrincipal.USER_TYPE, "ANONYMOUS");

@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
  * message size would record a sequence of message sizes using the {@link #record(double)} api and would maintain a set
  * of metrics about request sizes such as the average or max.
  */
+// TODO: 2018/3/5 by zmyer
 public final class Sensor {
 
     private final Metrics registry;

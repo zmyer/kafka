@@ -37,6 +37,7 @@ import java.util.Set;
  * leadership changes, we will deviate from the optimal. If this turns out to be an issue in practice, we can improve
  * it by tracking the partitions per node or calling `set` every so often.
  */
+// TODO: 2018/3/8 by zmyer
 public class PartitionStates<S> {
 
     private final LinkedHashMap<TopicPartition, S> map = new LinkedHashMap<>();

@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.clients.consumer;
 
+// TODO: 2018/3/7 by zmyer
 public enum OffsetResetStrategy {
     LATEST, EARLIEST, NONE
 }

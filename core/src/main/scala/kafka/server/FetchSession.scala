@@ -648,6 +648,7 @@ class FetchSessionCache(private val maxEntries: Int,
   }
 }
 
+// TODO: by zmyer
 class FetchManager(private val time: Time,
                    private val cache: FetchSessionCache) extends Logging {
   def newContext(reqMetadata: JFetchMetadata,

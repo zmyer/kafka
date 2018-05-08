@@ -27,6 +27,7 @@ import java.util.Iterator;
  * many records otherwise. Newer versions (magic versions 2 and above) will generally contain many records
  * regardless of compression.
  */
+// TODO: 2018/3/5 by zmyer
 public interface RecordBatch extends Iterable<Record> {
 
     /**

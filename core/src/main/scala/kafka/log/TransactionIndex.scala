@@ -59,6 +59,7 @@ class TransactionIndex(val startOffset: Long, @volatile var file: File) extends 
     Utils.writeFully(channel, abortedTxn.buffer.duplicate())
   }
 
+  // TODO: by zmyer
   def flush(): Unit = maybeChannel.foreach(_.force(true))
 
   /**
@@ -68,6 +69,7 @@ class TransactionIndex(val startOffset: Long, @volatile var file: File) extends 
    * @return `true` if the file was deleted by this method; `false` if the file could not be deleted because it did
    *         not exist
    */
+  // TODO: by zmyer
   def deleteIfExists(): Boolean = {
     close()
     Files.deleteIfExists(file.toPath)
@@ -96,6 +98,7 @@ class TransactionIndex(val startOffset: Long, @volatile var file: File) extends 
     lastOffset = None
   }
 
+  // TODO: by zmyer
   def close(): Unit = {
     maybeChannel.foreach(_.close())
     maybeChannel = None

@@ -32,6 +32,7 @@ import org.apache.kafka.common.security.auth.KafkaPrincipal
  * If `authorizer.class.name` has no value specified, then no authorization will be performed, and all operations are
  * permitted.
  */
+// TODO: by zmyer
 trait Authorizer extends Configurable {
 
   /**

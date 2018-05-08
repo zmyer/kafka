@@ -32,6 +32,7 @@ import java.util.Map;
  * A container that holds the list {@link org.apache.kafka.clients.consumer.ConsumerInterceptor}
  * and wraps calls to the chain of custom interceptors.
  */
+// TODO: 2018/3/8 by zmyer
 public class ConsumerInterceptors<K, V> implements Closeable {
     private static final Logger log = LoggerFactory.getLogger(ConsumerInterceptors.class);
     private final List<ConsumerInterceptor<K, V>> interceptors;

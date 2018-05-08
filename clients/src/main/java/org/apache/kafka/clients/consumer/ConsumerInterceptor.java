@@ -39,6 +39,7 @@ import java.util.Map;
  * <p>
  * Implement {@link org.apache.kafka.common.ClusterResourceListener} to receive cluster metadata once it's available. Please see the class documentation for ClusterResourceListener for more information.
  */
+// TODO: 2018/3/7 by zmyer
 public interface ConsumerInterceptor<K, V> extends Configurable {
 
     /**

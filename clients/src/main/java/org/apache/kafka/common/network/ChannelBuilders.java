@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// TODO: 2018/3/5 by zmyer
 public class ChannelBuilders {
 
     private ChannelBuilders() { }
@@ -49,6 +50,7 @@ public class ChannelBuilders {
      * @return the configured `ChannelBuilder`
      * @throws IllegalArgumentException if `mode` invariants described above is not maintained
      */
+    // TODO: 2018/3/5 by zmyer
     public static ChannelBuilder clientChannelBuilder(SecurityProtocol securityProtocol,
             JaasContext.Type contextType,
             AbstractConfig config,
@@ -73,6 +75,7 @@ public class ChannelBuilders {
      * @param credentialCache Credential cache for SASL/SCRAM if SCRAM is enabled
      * @return the configured `ChannelBuilder`
      */
+    // TODO: 2018/3/12 by zmyer
     public static ChannelBuilder serverChannelBuilder(ListenerName listenerName,
                                                       boolean isInterBrokerListener,
                                                       SecurityProtocol securityProtocol,
@@ -83,6 +86,7 @@ public class ChannelBuilders {
                 isInterBrokerListener, null, true, credentialCache, tokenCache);
     }
 
+    // TODO: 2018/3/12 by zmyer
     private static ChannelBuilder create(SecurityProtocol securityProtocol,
                                          Mode mode,
                                          JaasContext.Type contextType,

@@ -32,6 +32,7 @@ import javax.net.ssl.SSLException;
  *   <li>{@link SslAuthenticationException} if SSL handshake failed due to any {@link SSLException}.
  * </ul>
  */
+// TODO: 2018/3/7 by zmyer
 public class AuthenticationException extends ApiException {
 
     private static final long serialVersionUID = 1L;

@@ -62,6 +62,7 @@ import static org.apache.kafka.common.record.RecordBatch.NO_PRODUCER_ID;
 /**
  * A class which maintains state for transactions. Also keeps the state necessary to ensure idempotent production.
  */
+// TODO: 2018/3/5 by zmyer
 public class TransactionManager {
     private static final int NO_INFLIGHT_REQUEST_CORRELATION_ID = -1;
 
@@ -332,6 +333,7 @@ public class TransactionManager {
         transitionTo(State.ABORTABLE_ERROR, exception);
     }
 
+    // TODO: 2018/3/6 by zmyer
     synchronized void transitionToFatalError(RuntimeException exception) {
         transitionTo(State.FATAL_ERROR, exception);
     }

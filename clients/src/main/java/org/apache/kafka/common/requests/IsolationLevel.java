@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.common.requests;
 
+// TODO: 2018/3/7 by zmyer
 public enum IsolationLevel {
     READ_UNCOMMITTED((byte) 0), READ_COMMITTED((byte) 1);
 

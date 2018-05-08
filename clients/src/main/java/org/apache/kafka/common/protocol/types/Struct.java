@@ -24,6 +24,7 @@ import java.util.Arrays;
 /**
  * A record that can be serialized and deserialized according to a pre-defined schema
  */
+// TODO: 2018/3/6 by zmyer
 public class Struct {
     private final Schema schema;
     private final Object[] values;

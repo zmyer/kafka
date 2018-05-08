@@ -34,6 +34,7 @@ import java.util.zip.GZIPOutputStream;
 /**
  * The compression type to use
  */
+// TODO: 2018/3/5 by zmyer
 public enum CompressionType {
     NONE(0, "none", 1.0f) {
         @Override

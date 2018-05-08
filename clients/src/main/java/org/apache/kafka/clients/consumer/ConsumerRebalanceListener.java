@@ -76,6 +76,7 @@ import org.apache.kafka.common.TopicPartition;
  * }
  * </pre>
  */
+// TODO: 2018/3/7 by zmyer
 public interface ConsumerRebalanceListener {
 
     /**

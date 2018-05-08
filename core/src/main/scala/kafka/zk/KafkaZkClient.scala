@@ -50,6 +50,7 @@ import scala.collection.{Seq, mutable}
  * easier to quickly migrate away from `ZkUtils`. We should revisit this once the migration is completed and tests are
  * in place. We should also consider whether a monolithic [[kafka.zk.ZkData]] is the way to go.
  */
+// TODO: by zmyer
 class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean, time: Time) extends AutoCloseable with
   Logging with KafkaMetricsGroup {
 
@@ -72,6 +73,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
    * @param data the znode data
    * @return the created path (including the appended monotonically increasing number)
    */
+  // TODO: by zmyer
   private[zk] def createSequentialPersistentPath(path: String, data: Array[Byte]): String = {
     val createRequest = CreateRequest(path, data, acls(path), CreateMode.PERSISTENT_SEQUENTIAL)
     val createResponse = retryRequestUntilConnected(createRequest)
@@ -1012,6 +1014,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
     debug(s"Added $logDirEventNotificationPath for broker $brokerId")
   }
 
+  // TODO: by zmyer
   def propagateIsrChanges(isrChangeSet: collection.Set[TopicPartition]): Unit = {
     val isrChangeNotificationPath: String = createSequentialPersistentPath(IsrChangeNotificationSequenceZNode.path(),
       IsrChangeNotificationSequenceZNode.encode(isrChangeSet))
@@ -1303,6 +1306,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
     * Create the cluster Id. If the cluster id already exists, return the current cluster id.
     * @return  cluster id
     */
+  // TODO: by zmyer
   def createOrGetClusterId(proposedClusterId: String): String = {
     try {
       createRecursive(ClusterIdZNode.path, ClusterIdZNode.toJson(proposedClusterId))
@@ -1388,6 +1392,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
     }
   }
 
+  // TODO: by zmyer
   private[zk] def createRecursive(path: String, data: Array[Byte] = null, throwIfPathExists: Boolean = true) = {
 
     def parentPath(path: String): String = {
@@ -1450,10 +1455,12 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
 
   private def acls(path: String): Seq[ACL] = ZkData.defaultAcls(isSecure, path)
 
+  // TODO: by zmyer
   private def retryRequestUntilConnected[Req <: AsyncRequest](request: Req): Req#Response = {
     retryRequestsUntilConnected(Seq(request)).head
   }
 
+  // TODO: by zmyer
   private def retryRequestsUntilConnected[Req <: AsyncRequest](requests: Seq[Req]): Seq[Req#Response] = {
     val remainingRequests = ArrayBuffer(requests: _*)
     val responses = new ArrayBuffer[Req#Response]
@@ -1526,6 +1533,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   }
 }
 
+// TODO: by zmyer
 object KafkaZkClient {
 
   /**
@@ -1544,6 +1552,7 @@ object KafkaZkClient {
    *
    * The metric group and type are preserved by default for compatibility with previous versions.
    */
+  // TODO: by zmyer
   def apply(connectString: String,
             isSecure: Boolean,
             sessionTimeoutMs: Int,
@@ -1552,8 +1561,10 @@ object KafkaZkClient {
             time: Time,
             metricGroup: String = "kafka.server",
             metricType: String = "SessionExpireListener") = {
+    //创建zk客户端
     val zooKeeperClient = new ZooKeeperClient(connectString, sessionTimeoutMs, connectionTimeoutMs, maxInFlightRequests,
       time, metricGroup, metricType)
+    //返回结果
     new KafkaZkClient(zooKeeperClient, isSecure, time)
   }
 }

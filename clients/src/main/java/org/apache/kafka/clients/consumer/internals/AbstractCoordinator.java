@@ -90,6 +90,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * before reading or writing the state of the group (e.g. generation, memberId) and holding the lock
  * when sending a request that affects the state of the group (e.g. JoinGroup, LeaveGroup).
  */
+// TODO: 2018/3/7 by zmyer
 public abstract class AbstractCoordinator implements Closeable {
     public static final String HEARTBEAT_THREAD_PREFIX = "kafka-coordinator-heartbeat-thread";
 
@@ -200,6 +201,7 @@ public abstract class AbstractCoordinator implements Closeable {
     /**
      * Block until the coordinator for this group is known and is ready to receive requests.
      */
+    // TODO: 2018/3/7 by zmyer
     public synchronized void ensureCoordinatorReady() {
         // Using zero as current time since timeout is effectively infinite
         ensureCoordinatorReady(0, Long.MAX_VALUE);
@@ -211,11 +213,14 @@ public abstract class AbstractCoordinator implements Closeable {
      * @param timeoutMs Maximum time to wait to discover the coordinator
      * @return true If coordinator discovery and initial connection succeeded, false otherwise
      */
+    // TODO: 2018/3/7 by zmyer
     protected synchronized boolean ensureCoordinatorReady(long startTimeMs, long timeoutMs) {
         long remainingMs = timeoutMs;
 
         while (coordinatorUnknown()) {
+            //查找coordinator对象
             RequestFuture<Void> future = lookupCoordinator();
+            //开始发送请求
             client.poll(future, remainingMs);
 
             if (future.failed()) {
@@ -231,7 +236,9 @@ public abstract class AbstractCoordinator implements Closeable {
             } else if (coordinator != null && client.connectionFailed(coordinator)) {
                 // we found the coordinator, but the connection has failed, so mark
                 // it dead and backoff before retrying discovery
+                //如果跟coordinator节点连接失败，则标记coordinator未知
                 markCoordinatorUnknown();
+                //开始退避
                 time.sleep(retryBackoffMs);
             }
 
@@ -243,19 +250,23 @@ public abstract class AbstractCoordinator implements Closeable {
         return !coordinatorUnknown();
     }
 
+    // TODO: 2018/3/7 by zmyer
     protected synchronized RequestFuture<Void> lookupCoordinator() {
         if (findCoordinatorFuture == null) {
             // find a node to ask about the coordinator
+            //首先查找负载最小的节点
             Node node = this.client.leastLoadedNode();
             if (node == null) {
                 log.debug("No broker available to send FindCoordinator request");
                 return RequestFuture.noBrokersAvailable();
             } else
+                //开始向查找到的节点发送查找coordinator对象
                 findCoordinatorFuture = sendFindCoordinatorRequest(node);
         }
         return findCoordinatorFuture;
     }
 
+    // TODO: 2018/3/7 by zmyer
     private synchronized void clearFindCoordinatorFuture() {
         findCoordinatorFuture = null;
     }
@@ -268,6 +279,7 @@ public abstract class AbstractCoordinator implements Closeable {
         return rejoinNeeded;
     }
 
+    // TODO: 2018/3/8 by zmyer
     private synchronized boolean rejoinIncomplete() {
         return joinFuture != null;
     }
@@ -281,8 +293,10 @@ public abstract class AbstractCoordinator implements Closeable {
      * @param now current time in milliseconds
      * @throws RuntimeException for unexpected errors raised from the heartbeat thread
      */
+    // TODO: 2018/3/8 by zmyer
     protected synchronized void pollHeartbeat(long now) {
         if (heartbeatThread != null) {
+            //心跳线程异常
             if (heartbeatThread.hasFailed()) {
                 // set the heartbeat thread to null and raise an exception. If the user catches it,
                 // the next call to ensureActiveGroup() will spawn a new heartbeat thread.
@@ -291,13 +305,16 @@ public abstract class AbstractCoordinator implements Closeable {
                 throw cause;
             }
             // Awake the heartbeat thread if needed
+            //开始发送心跳
             if (heartbeat.shouldHeartbeat(now)) {
                 notify();
             }
+            //发送心跳
             heartbeat.poll(now);
         }
     }
 
+    // TODO: 2018/3/7 by zmyer
     protected synchronized long timeToNextHeartbeat(long now) {
         // if we have not joined the group, we don't need to send heartbeats
         if (state == MemberState.UNJOINED)
@@ -308,14 +325,19 @@ public abstract class AbstractCoordinator implements Closeable {
     /**
      * Ensure that the group is active (i.e. joined and synced)
      */
+    // TODO: 2018/3/8 by zmyer
     public void ensureActiveGroup() {
         // always ensure that the coordinator is ready because we may have been disconnected
         // when sending heartbeats and does not necessarily require us to rejoin the group.
+        //确保coordinator节点就绪状态
         ensureCoordinatorReady();
+        //开始发送心跳
         startHeartbeatThreadIfNeeded();
+        //加入消费组
         joinGroupIfNeeded();
     }
 
+    // TODO: 2018/3/8 by zmyer
     private synchronized void startHeartbeatThreadIfNeeded() {
         if (heartbeatThread == null) {
             heartbeatThread = new HeartbeatThread();
@@ -345,6 +367,7 @@ public abstract class AbstractCoordinator implements Closeable {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     // visible for testing. Joins the group without starting the heartbeat thread.
     void joinGroupIfNeeded() {
         while (needRejoin() || rejoinIncomplete()) {
@@ -574,15 +597,18 @@ public abstract class AbstractCoordinator implements Closeable {
      * one of the brokers. The returned future should be polled to get the result of the request.
      * @return A request future which indicates the completion of the metadata request
      */
+    // TODO: 2018/3/7 by zmyer
     private RequestFuture<Void> sendFindCoordinatorRequest(Node node) {
         // initiate the group metadata request
         log.debug("Sending FindCoordinator request to broker {}", node);
         FindCoordinatorRequest.Builder requestBuilder =
                 new FindCoordinatorRequest.Builder(FindCoordinatorRequest.CoordinatorType.GROUP, this.groupId);
+        //向目标节点发送获取指定组的coordinator消息
         return client.send(node, requestBuilder)
                      .compose(new FindCoordinatorResponseHandler());
     }
 
+    // TODO: 2018/3/7 by zmyer
     private class FindCoordinatorResponseHandler extends RequestFutureAdapter<ClientResponse, Void> {
 
         @Override
@@ -590,6 +616,7 @@ public abstract class AbstractCoordinator implements Closeable {
             log.debug("Received FindCoordinator response {}", resp);
             clearFindCoordinatorFuture();
 
+            //获取查找coordinator应答消息
             FindCoordinatorResponse findCoordinatorResponse = (FindCoordinatorResponse) resp.responseBody();
             Errors error = findCoordinatorResponse.error();
             if (error == Errors.NONE) {
@@ -598,14 +625,18 @@ public abstract class AbstractCoordinator implements Closeable {
                     // for the coordinator in the underlying network client layer
                     int coordinatorConnectionId = Integer.MAX_VALUE - findCoordinatorResponse.node().id();
 
+                    //创建coordinator节点
                     AbstractCoordinator.this.coordinator = new Node(
                             coordinatorConnectionId,
                             findCoordinatorResponse.node().host(),
                             findCoordinatorResponse.node().port());
                     log.info("Discovered group coordinator {}", coordinator);
+                    //消费者开始连接coordinator节点
                     client.tryConnect(coordinator);
+                    //设置心跳重置超时时间
                     heartbeat.resetTimeouts(time.milliseconds());
                 }
+                //获取coordinator节点完成
                 future.complete(null);
             } else if (error == Errors.GROUP_AUTHORIZATION_FAILED) {
                 future.raise(new GroupAuthorizationException(groupId));
@@ -615,6 +646,7 @@ public abstract class AbstractCoordinator implements Closeable {
             }
         }
 
+        // TODO: 2018/3/7 by zmyer
         @Override
         public void onFailure(RuntimeException e, RequestFuture<Void> future) {
             clearFindCoordinatorFuture();
@@ -626,6 +658,7 @@ public abstract class AbstractCoordinator implements Closeable {
      * Check if we know who the coordinator is and we have an active connection
      * @return true if the coordinator is unknown
      */
+    // TODO: 2018/3/7 by zmyer
     public boolean coordinatorUnknown() {
         return checkAndGetCoordinator() == null;
     }
@@ -636,6 +669,7 @@ public abstract class AbstractCoordinator implements Closeable {
      *
      * @return the current coordinator or null if it is unknown
      */
+    // TODO: 2018/3/7 by zmyer
     protected synchronized Node checkAndGetCoordinator() {
         if (coordinator != null && client.connectionFailed(coordinator)) {
             markCoordinatorUnknown(true);
@@ -652,6 +686,7 @@ public abstract class AbstractCoordinator implements Closeable {
         markCoordinatorUnknown(false);
     }
 
+    // TODO: 2018/3/7 by zmyer
     protected synchronized void markCoordinatorUnknown(boolean isDisconnected) {
         if (this.coordinator != null) {
             log.info("Group coordinator {} is unavailable or invalid, will attempt rediscovery", this.coordinator);
@@ -673,6 +708,7 @@ public abstract class AbstractCoordinator implements Closeable {
      * Get the current generation state if the group is stable.
      * @return the current generation or null if the group is unjoined/rebalancing
      */
+    // TODO: 2018/3/8 by zmyer
     protected synchronized Generation generation() {
         if (this.state != MemberState.STABLE)
             return null;
@@ -727,6 +763,7 @@ public abstract class AbstractCoordinator implements Closeable {
     /**
      * Leave the current group and reset local generation/memberId.
      */
+    // TODO: 2018/3/8 by zmyer
     public synchronized void maybeLeaveGroup() {
         if (!coordinatorUnknown() && state != MemberState.UNJOINED && generation != Generation.NO_GENERATION) {
             // this is a minimal effort attempt to leave the group. we do not
@@ -799,6 +836,7 @@ public abstract class AbstractCoordinator implements Closeable {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     protected abstract class CoordinatorResponseHandler<R, T> extends RequestFutureAdapter<ClientResponse, T> {
         protected ClientResponse response;
 
@@ -884,6 +922,7 @@ public abstract class AbstractCoordinator implements Closeable {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     private class HeartbeatThread extends KafkaThread {
         private boolean enabled = false;
         private boolean closed = false;

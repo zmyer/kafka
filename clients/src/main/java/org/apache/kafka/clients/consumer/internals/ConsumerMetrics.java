@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.kafka.common.MetricNameTemplate;
 import org.apache.kafka.common.metrics.Metrics;
 
+// TODO: 2018/3/8 by zmyer
 public class ConsumerMetrics {
     
     public FetcherMetricsRegistry fetcherMetrics;

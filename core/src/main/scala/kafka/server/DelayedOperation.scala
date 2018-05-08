@@ -43,6 +43,7 @@ import scala.collection.mutable.ListBuffer
  *
  * A subclass of DelayedOperation needs to provide an implementation of both onComplete() and tryComplete().
  */
+// TODO: by zmyer
 abstract class DelayedOperation(override val delayMs: Long,
     lockOpt: Option[Lock] = None) extends TimerTask with Logging {
 
@@ -122,6 +123,7 @@ abstract class DelayedOperation(override val delayMs: Long,
   }
 }
 
+// TODO: by zmyer
 object DelayedOperationPurgatory {
 
   def apply[T <: DelayedOperation](purgatoryName: String,
@@ -138,6 +140,7 @@ object DelayedOperationPurgatory {
 /**
  * A helper purgatory class for bookkeeping delayed operations with a timeout, and expiring timed out operations.
  */
+// TODO: by zmyer
 final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: String,
                                                              timeoutTimer: Timer,
                                                              brokerId: Int = 0,
@@ -246,6 +249,7 @@ final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: Stri
    *
    * @return the number of completed operations during this process
    */
+  // TODO: by zmyer
   def checkAndComplete(key: Any): Int = {
     val watchers = inReadLock(removeWatchersLock) { watchersForKey.get(key) }
     if(watchers == null)
@@ -335,6 +339,7 @@ final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: Stri
       operations.add(t)
     }
 
+    // TODO: by zmyer
     // traverse the list and try to complete some watched elements
     def tryCompleteWatched(): Int = {
       var completed = 0
@@ -409,6 +414,7 @@ final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: Stri
   /**
    * A background reaper to expire delayed operations that have timed out
    */
+  // TODO: by zmyer
   private class ExpiredOperationReaper extends ShutdownableThread(
     "ExpirationReaper-%d-%s".format(brokerId, purgatoryName),
     false) {

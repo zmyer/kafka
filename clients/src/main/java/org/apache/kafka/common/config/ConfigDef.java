@@ -72,6 +72,7 @@ import java.util.Set;
  * This class can be used standalone or in combination with {@link AbstractConfig} which provides some additional
  * functionality for accessing configs.
  */
+// TODO: 2018/3/5 by zmyer
 public class ConfigDef {
     /**
      * A unique Java object which represents the lack of a default value.

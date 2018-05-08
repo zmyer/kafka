@@ -48,6 +48,7 @@ import java.util.Set;
  * is removed from the metadata refresh set after an update. Consumers disable topic expiry since they explicitly
  * manage topics while producers rely on topic expiry to limit the refresh set.
  */
+// TODO: 2018/3/5 by zmyer
 public final class Metadata {
 
     private static final Logger log = LoggerFactory.getLogger(Metadata.class);
@@ -125,6 +126,7 @@ public final class Metadata {
      * current info can be updated (i.e. backoff time has elapsed); If an update has been request then the expiry time
      * is now
      */
+    // TODO: 2018/3/6 by zmyer
     public synchronized long timeToNextUpdate(long nowMs) {
         long timeToExpire = needUpdate ? 0 : Math.max(this.lastSuccessfulRefreshMs + this.metadataExpireMs - nowMs, 0);
         long timeToAllowUpdate = this.lastRefreshMs + this.refreshBackoffMs - nowMs;
@@ -134,6 +136,7 @@ public final class Metadata {
     /**
      * Request an update of the current cluster metadata info, return the current version before the update
      */
+    // TODO: 2018/3/6 by zmyer
     public synchronized int requestUpdate() {
         this.needUpdate = true;
         return this.version;
@@ -151,6 +154,7 @@ public final class Metadata {
      * If any non-retriable authentication exceptions were encountered during
      * metadata update, clear and return the exception.
      */
+    // TODO: 2018/3/8 by zmyer
     public synchronized AuthenticationException getAndClearAuthenticationException() {
         if (authenticationException != null) {
             AuthenticationException exception = authenticationException;
@@ -163,6 +167,7 @@ public final class Metadata {
     /**
      * Wait for metadata update until the current version is larger than the last version we know of
      */
+    // TODO: 2018/3/6 by zmyer
     public synchronized void awaitUpdate(final int lastVersion, final long maxWaitMs) throws InterruptedException {
         if (maxWaitMs < 0) {
             throw new IllegalArgumentException("Max time to wait for metadata updates should not be < 0 milliseconds");
@@ -222,12 +227,14 @@ public final class Metadata {
      *        leader is not known
      * @param now current time in milliseconds
      */
+    // TODO: 2018/3/6 by zmyer
     public synchronized void update(Cluster newCluster, Set<String> unavailableTopics, long now) {
         Objects.requireNonNull(newCluster, "cluster should not be null");
 
         this.needUpdate = false;
         this.lastRefreshMs = now;
         this.lastSuccessfulRefreshMs = now;
+        //版本加1
         this.version += 1;
 
         if (topicExpiryEnabled) {
@@ -274,6 +281,7 @@ public final class Metadata {
      * Record an attempt to update the metadata that failed. We need to keep track of this
      * to avoid retrying immediately.
      */
+    // TODO: 2018/3/6 by zmyer
     public synchronized void failedUpdate(long now, AuthenticationException authenticationException) {
         this.lastRefreshMs = now;
         this.authenticationException = authenticationException;
@@ -313,6 +321,7 @@ public final class Metadata {
     /**
      * Get whether metadata for all topics is needed or not
      */
+    // TODO: 2018/3/6 by zmyer
     public synchronized boolean needMetadataForAllTopics() {
         return this.needMetadataForAllTopics;
     }
@@ -351,6 +360,7 @@ public final class Metadata {
         requestUpdate();
     }
 
+    // TODO: 2018/3/6 by zmyer
     private Cluster getClusterForCurrentTopics(Cluster cluster) {
         Set<String> unauthorizedTopics = new HashSet<>();
         Collection<PartitionInfo> partitionInfos = new ArrayList<>();

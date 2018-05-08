@@ -208,6 +208,7 @@ public class UpdateMetadataRequest extends AbstractRequest {
         }
     }
 
+    // TODO: 2018/3/9 by zmyer
     public static final class PartitionState {
         public final BasePartitionState basePartitionState;
         public final List<Integer> offlineReplicas;

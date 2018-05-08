@@ -33,6 +33,7 @@ trait CheckpointFileFormatter[T]{
   def fromLine(line: String): Option[T]
 }
 
+// TODO: by zmyer
 class CheckpointFile[T](val file: File,
                         version: Int,
                         formatter: CheckpointFileFormatter[T],

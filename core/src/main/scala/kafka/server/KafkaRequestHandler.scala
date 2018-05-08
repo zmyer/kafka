@@ -32,6 +32,7 @@ import scala.collection.mutable
 /**
  * A thread that answers kafka requests.
  */
+// TODO: by zmyer
 class KafkaRequestHandler(id: Int,
                           brokerId: Int,
                           val aggregateIdleMeter: Meter,
@@ -43,6 +44,7 @@ class KafkaRequestHandler(id: Int,
   private val shutdownComplete = new CountDownLatch(1)
   @volatile private var stopped = false
 
+  // TODO: by zmyer
   def run() {
     while (!stopped) {
       // We use a single meter for aggregate idle percentage for the thread pool.
@@ -51,21 +53,25 @@ class KafkaRequestHandler(id: Int,
       // time should be discounted by # threads.
       val startSelectTime = time.nanoseconds
 
+      //从指定的请求channel中拉取请求对象
       val req = requestChannel.receiveRequest(300)
       val endTime = time.nanoseconds
       val idleTime = endTime - startSelectTime
       aggregateIdleMeter.mark(idleTime / totalHandlerThreads.get)
 
       req match {
+          //关闭请求
         case RequestChannel.ShutdownRequest =>
           debug(s"Kafka request handler $id on broker $brokerId received shut down command")
           shutdownComplete.countDown()
           return
 
+          //一般请求
         case request: RequestChannel.Request =>
           try {
             request.requestDequeueTimeNanos = endTime
             trace(s"Kafka request handler $id on broker $brokerId handling request $request")
+            //开始处理请求
             apis.handle(request)
           } catch {
             case e: FatalExitError =>
@@ -82,52 +88,65 @@ class KafkaRequestHandler(id: Int,
     shutdownComplete.countDown()
   }
 
+  // TODO: by zmyer
   def stop(): Unit = {
     stopped = true
   }
 
+  //发送关闭请求
   def initiateShutdown(): Unit = requestChannel.sendShutdownRequest()
 
+  //等待关闭
   def awaitShutdown(): Unit = shutdownComplete.await()
 
 }
 
+// TODO: by zmyer
 class KafkaRequestHandlerPool(val brokerId: Int,
                               val requestChannel: RequestChannel,
                               val apis: KafkaApis,
                               time: Time,
                               numThreads: Int) extends Logging with KafkaMetricsGroup {
 
+  //线程池大小
   private val threadPoolSize: AtomicInteger = new AtomicInteger(numThreads)
   /* a meter to track the average free capacity of the request handlers */
   private val aggregateIdleMeter = newMeter("RequestHandlerAvgIdlePercent", "percent", TimeUnit.NANOSECONDS)
 
   this.logIdent = "[Kafka Request Handler on Broker " + brokerId + "], "
+  //handler集合
   val runnables = new mutable.ArrayBuffer[KafkaRequestHandler](numThreads)
   for (i <- 0 until numThreads) {
+    //创建handler对象
     createHandler(i)
   }
 
+  // TODO: by zmyer
   def createHandler(id: Int): Unit = synchronized {
     runnables += new KafkaRequestHandler(id, brokerId, aggregateIdleMeter, threadPoolSize, requestChannel, apis, time)
     KafkaThread.daemon("kafka-request-handler-" + id, runnables(id)).start()
   }
 
+  // TODO: by zmyer
   def resizeThreadPool(newSize: Int): Unit = synchronized {
     val currentSize = threadPoolSize.get
     info(s"Resizing request handler thread pool size from $currentSize to $newSize")
     if (newSize > currentSize) {
       for (i <- currentSize until newSize) {
+        //扩容handler集合
         createHandler(i)
       }
     } else if (newSize < currentSize) {
       for (i <- 1 to (currentSize - newSize)) {
+        //缩减handler集合
         runnables.remove(currentSize - i).stop()
       }
     }
+    //设置线程池大小
     threadPoolSize.set(newSize)
   }
 
+  // TODO: by zmyer
   def shutdown(): Unit = synchronized {
     info("shutting down")
     for (handler <- runnables)
@@ -138,6 +157,7 @@ class KafkaRequestHandlerPool(val brokerId: Int,
   }
 }
 
+// TODO: by zmyer
 class BrokerTopicMetrics(name: Option[String]) extends KafkaMetricsGroup {
   val tags: scala.collection.Map[String, String] = name match {
     case None => Map.empty
@@ -161,6 +181,7 @@ class BrokerTopicMetrics(name: Option[String]) extends KafkaMetricsGroup {
   val fetchMessageConversionsRate = newMeter(BrokerTopicStats.FetchMessageConversionsPerSec, "requests", TimeUnit.SECONDS, tags)
   val produceMessageConversionsRate = newMeter(BrokerTopicStats.ProduceMessageConversionsPerSec, "requests", TimeUnit.SECONDS, tags)
 
+  // TODO: by zmyer
   def close() {
     removeMetric(BrokerTopicStats.MessagesInPerSec, tags)
     removeMetric(BrokerTopicStats.BytesInPerSec, tags)
@@ -179,6 +200,7 @@ class BrokerTopicMetrics(name: Option[String]) extends KafkaMetricsGroup {
   }
 }
 
+// TODO: by zmyer
 object BrokerTopicStats {
   val MessagesInPerSec = "MessagesInPerSec"
   val BytesInPerSec = "BytesInPerSec"
@@ -195,6 +217,7 @@ object BrokerTopicStats {
   private val valueFactory = (k: String) => new BrokerTopicMetrics(Some(k))
 }
 
+// TODO: by zmyer
 class BrokerTopicStats {
   import BrokerTopicStats._
 

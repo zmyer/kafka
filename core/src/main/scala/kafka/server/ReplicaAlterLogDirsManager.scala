@@ -20,6 +20,7 @@ package kafka.server
 
 import kafka.cluster.BrokerEndPoint
 
+// TODO: by zmyer
 class ReplicaAlterLogDirsManager(brokerConfig: KafkaConfig,
                                  replicaManager: ReplicaManager,
                                  quotaManager: ReplicationQuotaManager,

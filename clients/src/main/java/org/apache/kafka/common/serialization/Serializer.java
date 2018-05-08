@@ -28,6 +28,7 @@ import java.util.Map;
  *
  * @param <T> Type to be serialized from.
  */
+// TODO: 2018/3/5 by zmyer
 public interface Serializer<T> extends Closeable {
 
     /**

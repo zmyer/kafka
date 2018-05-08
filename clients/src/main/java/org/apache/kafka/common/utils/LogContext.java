@@ -30,6 +30,7 @@ import org.slf4j.spi.LocationAwareLogger;
  * all of the dependent components in order to build new loggers. This removes the need to manually
  * add the groupId to each message.
  */
+// TODO: 2018/3/8 by zmyer
 public class LogContext {
 
     private final String logPrefix;

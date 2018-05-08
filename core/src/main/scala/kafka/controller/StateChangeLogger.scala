@@ -29,6 +29,7 @@ object StateChangeLogger {
  * context of the KafkaController or not (e.g. ReplicaManager and MetadataCache log to the state change logger
  * irrespective of whether the broker is the Controller).
  */
+// TODO: by zmyer
 class StateChangeLogger(brokerId: Int, inControllerContext: Boolean, controllerEpoch: Option[Int]) extends Logging {
 
   if (controllerEpoch.isDefined && !inControllerContext)

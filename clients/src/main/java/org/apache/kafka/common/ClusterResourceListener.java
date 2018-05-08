@@ -44,6 +44,7 @@ package org.apache.kafka.common;
  * <p>
  * {@link org.apache.kafka.common.metrics.MetricsReporter} : The {@link ClusterResourceListener#onUpdate(ClusterResource)} method will be invoked during the bootup of the Kafka broker. The reporter may receive metric events from the network layer before this method is invoked.
  */
+// TODO: 2018/3/5 by zmyer
 public interface ClusterResourceListener {
     /**
      * A callback method that a user can implement to get updates for {@link ClusterResource}.

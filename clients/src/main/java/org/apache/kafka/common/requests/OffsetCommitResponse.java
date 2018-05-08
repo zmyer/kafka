@@ -36,6 +36,7 @@ import static org.apache.kafka.common.protocol.CommonFields.PARTITION_ID;
 import static org.apache.kafka.common.protocol.CommonFields.THROTTLE_TIME_MS;
 import static org.apache.kafka.common.protocol.CommonFields.TOPIC_NAME;
 
+// TODO: 2018/3/8 by zmyer
 public class OffsetCommitResponse extends AbstractResponse {
 
     private static final String RESPONSES_KEY_NAME = "responses";

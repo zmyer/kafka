@@ -29,6 +29,7 @@ import java.util.Map;
  *
  * NOTE: This class is intended for INTERNAL usage only within Kafka.
  */
+// TODO: 2018/3/5 by zmyer
 public class ApiVersions {
 
     private final Map<String, NodeApiVersions> nodeApiVersions = new HashMap<>();
@@ -59,6 +60,7 @@ public class ApiVersions {
         return maxUsableMagic;
     }
 
+    // TODO: 2018/3/5 by zmyer
     public synchronized byte maxUsableProduceMagic() {
         return maxUsableProduceMagic;
     }

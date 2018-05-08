@@ -16,16 +16,17 @@
  */
 package org.apache.kafka.common.network;
 
-import java.nio.channels.SelectionKey;
-
-import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Configurable;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.memory.MemoryPool;
+
+import java.nio.channels.SelectionKey;
 
 
 /**
  * A ChannelBuilder interface to build Channel based on configs
  */
+// TODO: 2018/3/5 by zmyer
 public interface ChannelBuilder extends AutoCloseable, Configurable {
 
     /**
@@ -36,7 +37,9 @@ public interface ChannelBuilder extends AutoCloseable, Configurable {
      * @param  memoryPool memory pool from which to allocate buffers, or null for none
      * @return KafkaChannel
      */
-    KafkaChannel buildChannel(String id, SelectionKey key, int maxReceiveSize, MemoryPool memoryPool) throws KafkaException;
+    // TODO: 2018/4/11 by zmyer
+    KafkaChannel buildChannel(String id, SelectionKey key, int maxReceiveSize, MemoryPool memoryPool)
+            throws KafkaException;
 
     /**
      * Closes ChannelBuilder

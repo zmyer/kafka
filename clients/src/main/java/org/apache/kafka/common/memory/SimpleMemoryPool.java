@@ -29,9 +29,10 @@ import org.slf4j.LoggerFactory;
  * a simple pool implementation. this implementation just provides a limit on the total outstanding memory.
  * any buffer allocated must be release()ed always otherwise memory is not marked as reclaimed (and "leak"s)
  */
+// TODO: 2018/4/11 by zmyer
 public class SimpleMemoryPool implements MemoryPool {
     protected final Logger log = LoggerFactory.getLogger(getClass()); //subclass-friendly
-
+    //字节数
     protected final long sizeBytes;
     protected final boolean strict;
     protected final AtomicLong availableMemory;

@@ -33,6 +33,7 @@ import java.util.TreeMap;
 /**
  * An internal class which represents the API versions supported by a particular node.
  */
+// TODO: 2018/3/5 by zmyer
 public class NodeApiVersions {
     // A map of the usable versions of each API, keyed by the ApiKeys instance
     private final Map<ApiKeys, ApiVersion> supportedVersions = new EnumMap<>(ApiKeys.class);
@@ -95,6 +96,7 @@ public class NodeApiVersions {
     /**
      * Get the latest version supported by the broker within an allowed range of versions
      */
+    // TODO: 2018/3/6 by zmyer
     public short latestUsableVersion(ApiKeys apiKey, short oldestAllowedVersion, short latestAllowedVersion) {
         ApiVersion usableVersion = supportedVersions.get(apiKey);
         if (usableVersion == null)

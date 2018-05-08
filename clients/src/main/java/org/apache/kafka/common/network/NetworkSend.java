@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 /**
  * A size delimited Send that consists of a 4 byte network-ordered size N followed by N bytes of content
  */
+// TODO: 2018/3/6 by zmyer
 public class NetworkSend extends ByteBufferSend {
 
     public NetworkSend(String destination, ByteBuffer buffer) {

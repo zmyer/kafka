@@ -176,6 +176,7 @@ class Log(@volatile var dir: File,
     this.config = newConfig
   }
 
+  // TODO: by zmyer
   private def checkIfMemoryMappedBufferClosed(): Unit = {
     if (isMemoryMappedBufferClosed)
       throw new KafkaStorageException(s"The memory mapped buffer for log of $topicPartition is already closed")
@@ -800,6 +801,7 @@ class Log(@volatile var dir: File,
   /**
    * Increment the log start offset if the provided offset is larger.
    */
+  // TODO: by zmyer
   def maybeIncrementLogStartOffset(newLogStartOffset: Long) {
     // We don't have to write the log start offset to log-start-offset-checkpoint immediately.
     // The deleteRecordsOffset may be lost only if all in-sync replicas of this broker are shutdown
@@ -1145,15 +1147,19 @@ class Log(@volatile var dir: File,
    *                  (if there is one) and returns true iff it is deletable
    * @return The number of segments deleted
    */
+  // TODO: by zmyer
   private def deleteOldSegments(predicate: (LogSegment, Option[LogSegment]) => Boolean, reason: String): Int = {
     lock synchronized {
+      //首先统计需要删除的segment集合
       val deletable = deletableSegments(predicate)
       if (deletable.nonEmpty)
         info(s"Found deletable segments with base offsets [${deletable.map(_.baseOffset).mkString(",")}] due to $reason")
+      //开始删除所有带删除的segment
       deleteSegments(deletable)
     }
   }
 
+  // TODO: by zmyer
   private def deleteSegments(deletable: Iterable[LogSegment]): Int = {
     maybeHandleIOException(s"Error while deleting segments for $topicPartition in dir ${dir.getParent}") {
       val numToDelete = deletable.size
@@ -1184,6 +1190,7 @@ class Log(@volatile var dir: File,
    *                  (if there is one) and returns true iff it is deletable
    * @return the segments ready to be deleted
    */
+  // TODO: by zmyer
   private def deletableSegments(predicate: (LogSegment, Option[LogSegment]) => Boolean): Iterable[LogSegment] = {
     if (segments.isEmpty || replicaHighWatermark.isEmpty) {
       Seq.empty
@@ -1214,11 +1221,13 @@ class Log(@volatile var dir: File,
    * Delete any log segments that have either expired due to time based retention
    * or because the log size is > retentionSize
    */
+  // TODO: by zmyer
   def deleteOldSegments(): Int = {
     if (!config.delete) return 0
     deleteRetentionMsBreachedSegments() + deleteRetentionSizeBreachedSegments() + deleteLogStartOffsetBreachedSegments()
   }
 
+  // TODO: by zmyer
   private def deleteRetentionMsBreachedSegments(): Int = {
     if (config.retentionMs < 0) return 0
     val startMs = time.milliseconds
@@ -1226,9 +1235,11 @@ class Log(@volatile var dir: File,
       reason = s"retention time ${config.retentionMs}ms breach")
   }
 
+  // TODO: by zmyer
   private def deleteRetentionSizeBreachedSegments(): Int = {
     if (config.retentionSize < 0 || size < config.retentionSize) return 0
     var diff = size - config.retentionSize
+    //根据大小来删除指定的segment
     def shouldDelete(segment: LogSegment, nextSegmentOpt: Option[LogSegment]) = {
       if (diff - segment.size >= 0) {
         diff -= segment.size
@@ -1237,14 +1248,16 @@ class Log(@volatile var dir: File,
         false
       }
     }
-
+    //删除那些满足条件的segment
     deleteOldSegments(shouldDelete, reason = s"retention size in bytes ${config.retentionSize} breach")
   }
 
+  // TODO: by zmyer
   private def deleteLogStartOffsetBreachedSegments(): Int = {
     def shouldDelete(segment: LogSegment, nextSegmentOpt: Option[LogSegment]) =
       nextSegmentOpt.exists(_.baseOffset <= logStartOffset)
 
+    //删除指定offset的segment
     deleteOldSegments(shouldDelete, reason = s"log start offset $logStartOffset breach")
   }
 
@@ -1365,6 +1378,7 @@ class Log(@volatile var dir: File,
   /**
    * Flush all log segments
    */
+  // TODO: by zmyer
   def flush(): Unit = flush(this.logEndOffset)
 
   /**
@@ -1372,19 +1386,25 @@ class Log(@volatile var dir: File,
    *
    * @param offset The offset to flush up to (non-inclusive); the new recovery point
    */
+  // TODO: by zmyer
   def flush(offset: Long) : Unit = {
     maybeHandleIOException(s"Error while flushing log for $topicPartition in dir ${dir.getParent} with offset $offset") {
+      //如果segment的offset小于恢复点，则说明之前已经flush过，故不需要再flush
       if (offset <= this.recoveryPoint)
         return
       debug("Flushing log '" + name + " up to offset " + offset + ", last flushed: " + lastFlushTime + " current time: " +
         time.milliseconds + " unflushed = " + unflushedMessages)
       for (segment <- logSegments(this.recoveryPoint, offset))
+        //开始刷新offset与恢复点之间的segment
         segment.flush()
 
       lock synchronized {
+        //检查mmap是否关闭
         checkIfMemoryMappedBufferClosed()
         if (offset > this.recoveryPoint) {
+          //重新设置恢复点
           this.recoveryPoint = offset
+          //设置最后flush时间
           lastFlushedTime.set(time.milliseconds)
         }
       }
@@ -1578,6 +1598,7 @@ class Log(@volatile var dir: File,
    *
    * @param segment The log segment to schedule for deletion
    */
+  // TODO: by zmyer
   private def deleteSegment(segment: LogSegment) {
     info(s"Scheduling log segment [baseOffset ${segment.baseOffset}, size ${segment.size}] for log $name for deletion.")
     lock synchronized {
@@ -1594,14 +1615,18 @@ class Log(@volatile var dir: File,
    *
    * @throws IOException if the file can't be renamed and still exists
    */
+  // TODO: by zmyer
   private def asyncDeleteSegment(segment: LogSegment) {
+    //修改待删除文件后缀
     segment.changeFileSuffixes("", Log.DeletedFileSuffix)
     def deleteSeg() {
       info(s"Deleting segment ${segment.baseOffset} from log $name.")
       maybeHandleIOException(s"Error while deleting segments for $topicPartition in dir ${dir.getParent}") {
+        //删除segment
         segment.deleteIfExists()
       }
     }
+    //定时删除
     scheduler.schedule("delete-file", deleteSeg _, delay = config.fileDeleteDelayMs)
   }
 

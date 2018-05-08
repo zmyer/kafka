@@ -124,6 +124,7 @@ object DynamicBrokerConfig {
   }
 }
 
+// TODO: by zmyer
 class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging {
 
   private[server] val staticBrokerConfigs = ConfigDef.convertToStringMapWithPasswordValues(kafkaConfig.originalsFromThisConfig).asScala

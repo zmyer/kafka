@@ -35,6 +35,7 @@ import static org.apache.kafka.common.utils.Utils.wrapNullable;
  * Usually it should be accessed indirectly through the {@link Record} interface which is exposed
  * through the {@link Records} object.
  */
+// TODO: 2018/3/5 by zmyer
 public final class LegacyRecord {
 
     /**
@@ -415,6 +416,7 @@ public final class LegacyRecord {
         return write(out, magic, timestamp, wrapNullable(key), wrapNullable(value), compressionType, timestampType);
     }
 
+    // TODO: 2018/3/5 by zmyer
     public static long write(DataOutputStream out,
                              byte magic,
                              long timestamp,
@@ -443,6 +445,7 @@ public final class LegacyRecord {
 
     // Write a record to the buffer, if the record's compression type is none, then
     // its value payload should be already compressed with the specified type
+    // TODO: 2018/3/5 by zmyer
     private static void write(DataOutputStream out,
                               byte magic,
                               long crc,
@@ -515,6 +518,7 @@ public final class LegacyRecord {
     /**
      * Compute the checksum of the record from the attributes, key and value payloads
      */
+    // TODO: 2018/3/5 by zmyer
     private static long computeChecksum(byte magic, byte attributes, long timestamp, ByteBuffer key, ByteBuffer value) {
         Crc32 crc = new Crc32();
         crc.update(magic);
@@ -540,6 +544,7 @@ public final class LegacyRecord {
         return crc.getValue();
     }
 
+    // TODO: 2018/3/5 by zmyer
     static int recordOverhead(byte magic) {
         if (magic == 0)
             return RECORD_OVERHEAD_V0;

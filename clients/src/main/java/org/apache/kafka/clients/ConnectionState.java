@@ -25,9 +25,11 @@ package org.apache.kafka.clients;
  * READY: connection is ready to send requests
  * AUTHENTICATION_FAILED: connection failed due to an authentication error
  */
+// TODO: 2018/3/5 by zmyer
 public enum ConnectionState {
     DISCONNECTED, CONNECTING, CHECKING_API_VERSIONS, READY, AUTHENTICATION_FAILED;
 
+    // TODO: 2018/3/5 by zmyer
     public boolean isDisconnected() {
         return this == AUTHENTICATION_FAILED || this == DISCONNECTED;
     }

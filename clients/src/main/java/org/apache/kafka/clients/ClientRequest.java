@@ -23,6 +23,7 @@ import org.apache.kafka.common.requests.RequestHeader;
 /**
  * A request being sent to the server. This holds both the network send as well as the client-level metadata.
  */
+// TODO: 2018/3/5 by zmyer
 public final class ClientRequest {
 
     private final String destination;
@@ -42,6 +43,7 @@ public final class ClientRequest {
      * @param expectResponse Should we expect a response message or is this request complete once it is sent?
      * @param callback A callback to execute when the response has been received (or null if no callback is necessary)
      */
+    // TODO: 2018/3/6 by zmyer
     public ClientRequest(String destination,
                          AbstractRequest.Builder<?> requestBuilder,
                          int correlationId,
@@ -78,6 +80,7 @@ public final class ClientRequest {
         return requestBuilder.apiKey();
     }
 
+    // TODO: 2018/3/6 by zmyer
     public RequestHeader makeHeader(short version) {
         return new RequestHeader(apiKey(), version, clientId, correlationId);
     }

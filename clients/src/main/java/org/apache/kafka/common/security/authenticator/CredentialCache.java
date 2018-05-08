@@ -18,6 +18,7 @@ package org.apache.kafka.common.security.authenticator;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: 2018/3/9 by zmyer
 public class CredentialCache {
 
     private final ConcurrentHashMap<String, Cache<? extends Object>> cacheMap = new ConcurrentHashMap<>();

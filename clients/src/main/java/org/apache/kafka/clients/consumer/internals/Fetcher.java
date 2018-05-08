@@ -91,32 +91,54 @@ import static org.apache.kafka.common.serialization.ExtendedDeserializer.Wrapper
 /**
  * This class manage the fetching process with the brokers.
  */
+// TODO: 2018/3/8 by zmyer
 public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     private final Logger log;
     private final LogContext logContext;
+    //底层通信客户端
     private final ConsumerNetworkClient client;
+    //计时器
     private final Time time;
+    //最小字节数
     private final int minBytes;
+    //最大字节数
     private final int maxBytes;
+    //最大等待时间
     private final int maxWaitMs;
+    //消息批量拉取的字节数
     private final int fetchSize;
+    //重试退避时间间隔
     private final long retryBackoffMs;
+    //请求超时时间
     private final long requestTimeoutMs;
+    //最大可以拉取的记录数目
     private final int maxPollRecords;
+    //是否CRC
     private final boolean checkCrcs;
+    //元数据
     private final Metadata metadata;
+    //fetch管理器统计日志
     private final FetchManagerMetrics sensors;
+    //订阅状态对象
     private final SubscriptionState subscriptions;
+    //完成拉取消息集合
     private final ConcurrentLinkedQueue<CompletedFetch> completedFetches;
+    //缓存分配器
     private final BufferSupplier decompressionBufferSupplier = BufferSupplier.create();
+    //key反序列化对象
     private final ExtendedDeserializer<K> keyDeserializer;
+    //value反序列化对象
     private final ExtendedDeserializer<V> valueDeserializer;
     private final IsolationLevel isolationLevel;
+    //会话处理列表
     private final Map<Integer, FetchSessionHandler> sessionHandlers;
+    //
     private final AtomicReference<RuntimeException> cachedListOffsetsException = new AtomicReference<>();
 
+    //从服务器端拉取到的消息集合
     private PartitionRecords nextInLineRecords = null;
 
+    // TODO: 2018/3/8 by zmyer
     public Fetcher(LogContext logContext,
                    ConsumerNetworkClient client,
                    int minBytes,
@@ -162,6 +184,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     /**
      * Represents data about an offset returned by a broker.
      */
+    // TODO: 2018/3/8 by zmyer
     private static class OffsetData {
         final long offset;
         final Long timestamp; //  null if the broker does not support returning timestamps
@@ -176,6 +199,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * Return whether we have any completed fetches pending return to the user. This method is thread-safe.
      * @return true if there are completed fetches, false otherwise
      */
+    // TODO: 2018/3/8 by zmyer
     public boolean hasCompletedFetches() {
         return !completedFetches.isEmpty();
     }
@@ -185,6 +209,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * an in-flight fetch or pending fetch data.
      * @return number of fetches sent
      */
+    // TODO: 2018/3/7 by zmyer
     public int sendFetches() {
         Map<Node, FetchSessionHandler.FetchRequestData> fetchRequestMap = prepareFetchRequests();
         for (Map.Entry<Node, FetchSessionHandler.FetchRequestData> entry : fetchRequestMap.entrySet()) {
@@ -203,6 +228,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                     .addListener(new RequestFutureListener<ClientResponse>() {
                         @Override
                         public void onSuccess(ClientResponse resp) {
+                            //获取应答
                             FetchResponse response = (FetchResponse) resp.responseBody();
                             FetchSessionHandler handler = sessionHandlers.get(fetchTarget.id());
                             if (handler == null) {
@@ -210,6 +236,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                                     fetchTarget.id());
                                 return;
                             }
+                            //开始处理应答
                             if (!handler.handleResponse(response)) {
                                 return;
                             }
@@ -217,13 +244,17 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                             Set<TopicPartition> partitions = new HashSet<>(response.responseData().keySet());
                             FetchResponseMetricAggregator metricAggregator = new FetchResponseMetricAggregator(sensors, partitions);
 
+                            //依次遍历每个topic分区对应的应答结果
                             for (Map.Entry<TopicPartition, FetchResponse.PartitionData> entry : response.responseData().entrySet()) {
                                 TopicPartition partition = entry.getKey();
+                                //获取拉取消息offset
                                 long fetchOffset = data.sessionPartitions().get(partition).fetchOffset;
+                                //获取拉取消息数据
                                 FetchResponse.PartitionData fetchData = entry.getValue();
 
                                 log.debug("Fetch {} at offset {} for partition {} returned fetch data {}",
                                         isolationLevel, fetchOffset, partition, fetchData);
+                                //将拉取到的消息插入到fetch完成列表中，等待下一步处理
                                 completedFetches.add(new CompletedFetch(partition, fetchOffset, fetchData, metricAggregator,
                                         resp.requestHeader().apiVersion()));
                             }
@@ -233,6 +264,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
 
                         @Override
                         public void onFailure(RuntimeException e) {
+                            //拉取失败处理
                             FetchSessionHandler handler = sessionHandlers.get(fetchTarget.id());
                             if (handler != null) {
                                 handler.handleError(e);
@@ -248,6 +280,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * @param timeout time for which getting topic metadata is attempted
      * @return The map of topics with their partition information
      */
+    // TODO: 2018/3/8 by zmyer
     public Map<String, List<PartitionInfo>> getAllTopicMetadata(long timeout) {
         return getTopicMetadata(MetadataRequest.Builder.allTopics(), timeout);
     }
@@ -259,6 +292,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * @param timeout time for which getting topic metadata is attempted
      * @return The map of topics with their partition information
      */
+    // TODO: 2018/3/8 by zmyer
     public Map<String, List<PartitionInfo>> getTopicMetadata(MetadataRequest.Builder request, long timeout) {
         // Save the round trip if no topics are requested.
         if (!request.isAllTopics() && request.topics().isEmpty())
@@ -268,16 +302,20 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         long remaining = timeout;
 
         do {
+            //开始发送获取元数据请求
             RequestFuture<ClientResponse> future = sendMetadataRequest(request);
+            //唤醒通信客户端发送消息
             client.poll(future, remaining);
 
             if (future.failed() && !future.isRetriable())
                 throw future.exception();
 
             if (future.succeeded()) {
+                //获取元数据应答消息
                 MetadataResponse response = (MetadataResponse) future.value().responseBody();
                 Cluster cluster = response.cluster();
 
+                //获取所有未认证的topic
                 Set<String> unauthorizedTopics = cluster.unauthorizedTopics();
                 if (!unauthorizedTopics.isEmpty())
                     throw new TopicAuthorizationException(unauthorizedTopics);
@@ -308,6 +346,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                     }
                 }
 
+                //如果不需要重试，则直接解析返回结果
                 if (!shouldRetry) {
                     HashMap<String, List<PartitionInfo>> topicsPartitionInfos = new HashMap<>();
                     for (String topic : cluster.topics())
@@ -316,6 +355,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                 }
             }
 
+            //退避等待重试
             long elapsed = time.milliseconds() - start;
             remaining = timeout - elapsed;
 
@@ -333,14 +373,18 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * Send Metadata Request to least loaded node in Kafka cluster asynchronously
      * @return A future that indicates result of sent metadata request
      */
+    // TODO: 2018/3/8 by zmyer
     private RequestFuture<ClientResponse> sendMetadataRequest(MetadataRequest.Builder request) {
+        //获取负载最小的节点
         final Node node = client.leastLoadedNode();
         if (node == null)
             return RequestFuture.noBrokersAvailable();
         else
+            //开始向指定的节点发送请求
             return client.send(node, request);
     }
 
+    // TODO: 2018/3/8 by zmyer
     private Long offsetResetStrategyTimestamp(final TopicPartition partition) {
         OffsetResetStrategy strategy = subscriptions.resetStrategy(partition);
         if (strategy == OffsetResetStrategy.EARLIEST)
@@ -357,6 +401,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * @throws org.apache.kafka.clients.consumer.NoOffsetForPartitionException If no offset reset strategy is defined
      *   and one or more partitions aren't awaiting a seekToBeginning() or seekToEnd().
      */
+    // TODO: 2018/3/7 by zmyer
     public void resetOffsetsIfNeeded() {
         // Raise exception from previous offset fetch if there is one
         RuntimeException exception = cachedListOffsetsException.getAndSet(null);
@@ -374,11 +419,14 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                 offsetResetTimestamps.put(partition, timestamp);
         }
 
+        //异步重置offset
         resetOffsetsAsync(offsetResetTimestamps);
     }
 
+    // TODO: 2018/3/8 by zmyer
     public Map<TopicPartition, OffsetAndTimestamp> offsetsByTimes(Map<TopicPartition, Long> timestampsToSearch,
                                                                   long timeout) {
+        //获取topic分区offset数据
         Map<TopicPartition, OffsetData> fetchedOffsets = fetchOffsetsByTimes(timestampsToSearch,
                 timeout, true).fetchedOffsets;
 
@@ -396,6 +444,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         return offsetsByTimes;
     }
 
+    // TODO: 2018/3/8 by zmyer
     private ListOffsetResult fetchOffsetsByTimes(Map<TopicPartition, Long> timestampsToSearch,
                                                  long timeout,
                                                  boolean requireTimestamps) {
@@ -408,18 +457,25 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         long startMs = time.milliseconds();
         long remaining = timeout;
         do {
+            //发送请求offset
             RequestFuture<ListOffsetResult> future = sendListOffsetsRequests(remainingToSearch, requireTimestamps);
+            //开始发送
             client.poll(future, remaining);
 
+            //发送失败
             if (!future.isDone())
                 break;
 
             if (future.succeeded()) {
+                //发送成功，获取返回的应答消息
                 ListOffsetResult value = future.value();
+                //将应答消息插入到offset列表中
                 result.fetchedOffsets.putAll(value.fetchedOffsets);
                 if (value.partitionsToRetry.isEmpty())
+                    //如果不需要重试，直接返回
                     return result;
 
+                //如果需要重试，只需要获取那些需要重试的topic
                 remainingToSearch.keySet().removeAll(result.fetchedOffsets.keySet());
             } else if (!future.isRetriable()) {
                 throw future.exception();
@@ -430,9 +486,11 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             if (remaining <= 0)
                 break;
 
+            //如果需要更新集群元数据，则需要等待
             if (metadata.updateRequested())
                 client.awaitMetadataUpdate(remaining);
             else
+                //否则退避等待下一次重试
                 time.sleep(Math.min(remaining, retryBackoffMs));
 
             elapsed = time.milliseconds() - startMs;
@@ -442,14 +500,17 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         throw new TimeoutException("Failed to get offsets by times in " + timeout + "ms");
     }
 
+    // TODO: 2018/3/8 by zmyer
     public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions, long timeout) {
         return beginningOrEndOffset(partitions, ListOffsetRequest.EARLIEST_TIMESTAMP, timeout);
     }
 
+    // TODO: 2018/3/8 by zmyer
     public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions, long timeout) {
         return beginningOrEndOffset(partitions, ListOffsetRequest.LATEST_TIMESTAMP, timeout);
     }
 
+    // TODO: 2018/3/8 by zmyer
     private Map<TopicPartition, Long> beginningOrEndOffset(Collection<TopicPartition> partitions,
                                                            long timestamp,
                                                            long timeout) {
@@ -457,6 +518,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         for (TopicPartition tp : partitions)
             timestampsToSearch.put(tp, timestamp);
         Map<TopicPartition, Long> offsets = new HashMap<>();
+        //获取指定分区的offset信息
         ListOffsetResult result = fetchOffsetsByTimes(timestampsToSearch, timeout, false);
         for (Map.Entry<TopicPartition, OffsetData> entry : result.fetchedOffsets.entrySet()) {
             offsets.put(entry.getKey(), entry.getValue().offset);
@@ -473,6 +535,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * @throws OffsetOutOfRangeException If there is OffsetOutOfRange error in fetchResponse and
      *         the defaultResetPolicy is NONE
      */
+    // TODO: 2018/3/7 by zmyer
     public Map<TopicPartition, List<ConsumerRecord<K, V>>> fetchedRecords() {
         Map<TopicPartition, List<ConsumerRecord<K, V>>> fetched = new HashMap<>();
         int recordsRemaining = maxPollRecords;
@@ -512,6 +575,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         return fetched;
     }
 
+    // TODO: 2018/3/8 by zmyer
     private List<ConsumerRecord<K, V>> fetchRecords(PartitionRecords partitionRecords, int maxRecords) {
         if (!subscriptions.isAssigned(partitionRecords.partition)) {
             // this can happen when a rebalance happened before fetched records are returned to the consumer's poll call
@@ -523,6 +587,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             log.debug("Not returning fetched records for assigned partition {} since it is no longer fetchable",
                     partitionRecords.partition);
         } else {
+            //获取topic分区position
             long position = subscriptions.position(partitionRecords.partition);
             if (partitionRecords.nextFetchOffset == position) {
                 List<ConsumerRecord<K, V>> partRecords = partitionRecords.fetchRecords(maxRecords);
@@ -554,6 +619,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         return emptyList();
     }
 
+    // TODO: 2018/3/7 by zmyer
     private void resetOffsetIfNeeded(TopicPartition partition, Long requestedResetTimestamp, OffsetData offsetData) {
         // we might lose the assignment while fetching the offset, or the user might seek to a different offset,
         // so verify it is still assigned and still in need of the requested reset
@@ -569,6 +635,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         }
     }
 
+    // TODO: 2018/3/7 by zmyer
     private void resetOffsetsAsync(Map<TopicPartition, Long> partitionResetTimestamps) {
         // Add the topics to the metadata to do a single metadata fetch.
         for (TopicPartition tp : partitionResetTimestamps.keySet())
@@ -616,6 +683,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      *                         not support fetching precise timestamps for offsets
      * @return A response which can be polled to obtain the corresponding timestamps and offsets.
      */
+    // TODO: 2018/3/8 by zmyer
     private RequestFuture<ListOffsetResult> sendListOffsetsRequests(final Map<TopicPartition, Long> timestampsToSearch,
                                                                     final boolean requireTimestamps) {
         // Add the topics to the metadata to do a single metadata fetch.
@@ -790,6 +858,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             future.complete(new ListOffsetResult(fetchedOffsets, partitionsToRetry));
     }
 
+    // TODO: 2018/3/8 by zmyer
     private static class ListOffsetResult {
         private final Map<TopicPartition, OffsetData> fetchedOffsets;
         private final Set<TopicPartition> partitionsToRetry;
@@ -1001,6 +1070,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         return fetchThrottleTimeSensor;
     }
 
+    // TODO: 2018/3/8 by zmyer
     private class PartitionRecords {
         private final TopicPartition partition;
         private final CompletedFetch completedFetch;
@@ -1219,6 +1289,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     private static class CompletedFetch {
         private final TopicPartition partition;
         private final long fetchedOffset;
@@ -1298,6 +1369,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     private static class FetchManagerMetrics {
         private final Metrics metrics;
         private FetcherMetricsRegistry metricsRegistry;

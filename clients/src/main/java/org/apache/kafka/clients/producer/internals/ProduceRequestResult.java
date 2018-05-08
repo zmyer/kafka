@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  * partition in a produce request and it is shared by all the {@link RecordMetadata} instances that are batched together
  * for the same partition in the request.
  */
+// TODO: 2018/3/5 by zmyer
 public final class ProduceRequestResult {
 
     private final CountDownLatch latch = new CountDownLatch(1);
@@ -43,6 +44,7 @@ public final class ProduceRequestResult {
      *
      * @param topicPartition The topic and partition to which this record set was sent was sent
      */
+    // TODO: 2018/3/5 by zmyer
     public ProduceRequestResult(TopicPartition topicPartition) {
         this.topicPartition = topicPartition;
     }
@@ -54,6 +56,7 @@ public final class ProduceRequestResult {
      * @param logAppendTime The log append time or -1 if CreateTime is being used
      * @param error The error that occurred if there was one, or null
      */
+    // TODO: 2018/3/5 by zmyer
     public void set(long baseOffset, long logAppendTime, RuntimeException error) {
         this.baseOffset = baseOffset;
         this.logAppendTime = logAppendTime;

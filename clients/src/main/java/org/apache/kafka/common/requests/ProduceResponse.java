@@ -41,6 +41,7 @@ import static org.apache.kafka.common.protocol.types.Type.INT64;
 /**
  * This wrapper supports both v0 and v1 of ProduceResponse.
  */
+// TODO: 2018/3/6 by zmyer
 public class ProduceResponse extends AbstractResponse {
 
     private static final String RESPONSES_KEY_NAME = "responses";
@@ -241,10 +242,14 @@ public class ProduceResponse extends AbstractResponse {
         return errorCounts;
     }
 
+    // TODO: 2018/3/6 by zmyer
     public static final class PartitionResponse {
         public Errors error;
+        //分区基准offset
         public long baseOffset;
+        //append时间戳
         public long logAppendTime;
+        //log起始的offset
         public long logStartOffset;
 
         public PartitionResponse(Errors error) {

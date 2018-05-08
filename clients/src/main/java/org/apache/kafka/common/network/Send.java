@@ -22,6 +22,7 @@ import java.nio.channels.GatheringByteChannel;
 /**
  * This interface models the in-progress sending of data to a specific destination
  */
+// TODO: 2018/3/6 by zmyer
 public interface Send {
 
     /**

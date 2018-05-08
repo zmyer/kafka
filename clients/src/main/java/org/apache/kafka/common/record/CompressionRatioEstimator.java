@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * This class help estimate the compression ratio for each topic and compression type combination.
  */
+// TODO: 2018/3/5 by zmyer
 public class CompressionRatioEstimator {
     // The constant speed to increase compression ratio when a batch compresses better than expected.
     public static final float COMPRESSION_RATIO_IMPROVING_STEP = 0.005f;

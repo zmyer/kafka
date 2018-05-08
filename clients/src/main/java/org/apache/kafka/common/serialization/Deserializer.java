@@ -28,6 +28,7 @@ import java.util.Map;
  *
  * @param <T> Type to be deserialized into.
  */
+// TODO: 2018/3/8 by zmyer
 public interface Deserializer<T> extends Closeable {
 
     /**

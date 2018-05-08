@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+// TODO: 2018/3/5 by zmyer
 public abstract class AbstractRecords implements Records {
 
     private final Iterable<Record> records = new Iterable<Record>() {
@@ -65,6 +66,7 @@ public abstract class AbstractRecords implements Records {
      * only load records into the heap when down converting), but it's not for the producer. However, down converting
      * in the producer is very uncommon and the extra complexity to handle that case is not worth it.
      */
+    // TODO: 2018/3/6 by zmyer
     protected ConvertedRecords<MemoryRecords> downConvert(Iterable<? extends RecordBatch> batches, byte toMagic,
             long firstOffset, Time time) {
         // maintain the batch along with the decompressed records to avoid the need to decompress again
@@ -123,6 +125,7 @@ public abstract class AbstractRecords implements Records {
      * Return a buffer containing the converted record batches. The returned buffer may not be the same as the received
      * one (e.g. it may require expansion).
      */
+    // TODO: 2018/3/6 by zmyer
     private MemoryRecordsBuilder convertRecordBatch(byte magic, ByteBuffer buffer, RecordBatchAndRecords recordBatchAndRecords) {
         RecordBatch batch = recordBatchAndRecords.batch;
         final TimestampType timestampType = batch.timestampType();
@@ -201,6 +204,7 @@ public abstract class AbstractRecords implements Records {
      * Get an upper bound estimate on the batch size needed to hold a record with the given fields. This is only
      * an estimate because it does not take into account overhead from the compression algorithm.
      */
+    // TODO: 2018/3/5 by zmyer
     public static int estimateSizeInBytesUpperBound(byte magic, CompressionType compressionType, byte[] key, byte[] value, Header[] headers) {
         return estimateSizeInBytesUpperBound(magic, compressionType, Utils.wrapNullable(key), Utils.wrapNullable(value), headers);
     }
@@ -209,6 +213,7 @@ public abstract class AbstractRecords implements Records {
      * Get an upper bound estimate on the batch size needed to hold a record with the given fields. This is only
      * an estimate because it does not take into account overhead from the compression algorithm.
      */
+    // TODO: 2018/3/5 by zmyer
     public static int estimateSizeInBytesUpperBound(byte magic, CompressionType compressionType, ByteBuffer key,
                                                     ByteBuffer value, Header[] headers) {
         if (magic >= RecordBatch.MAGIC_VALUE_V2)
@@ -236,6 +241,7 @@ public abstract class AbstractRecords implements Records {
         }
     }
 
+    // TODO: 2018/3/6 by zmyer
     private static class RecordBatchAndRecords {
         private final RecordBatch batch;
         private final List<Record> records;

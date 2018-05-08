@@ -26,6 +26,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 /**
  * The future result of a record send
  */
+// TODO: 2018/3/5 by zmyer
 public final class FutureRecordMetadata implements Future<RecordMetadata> {
 
     private final ProduceRequestResult result;

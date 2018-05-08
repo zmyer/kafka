@@ -37,7 +37,7 @@ import org.apache.kafka.common.record.{FileRecords, MemoryRecords}
 import scala.collection.JavaConverters._
 import scala.collection.{Map, Seq, Set, mutable}
 
-
+// TODO: by zmyer
 class ReplicaAlterLogDirsThread(name: String,
                                 sourceBroker: BrokerEndPoint,
                                 brokerConfig: KafkaConfig,

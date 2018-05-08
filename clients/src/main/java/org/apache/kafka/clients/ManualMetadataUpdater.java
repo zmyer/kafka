@@ -35,6 +35,7 @@ import java.util.List;
  *
  * This class is not thread-safe!
  */
+// TODO: 2018/3/7 by zmyer
 public class ManualMetadataUpdater implements MetadataUpdater {
 
     private static final Logger log = LoggerFactory.getLogger(ManualMetadataUpdater.class);

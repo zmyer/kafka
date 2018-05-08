@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @param <T> Return type of the result (Can be Void if there is no response)
  */
+// TODO: 2018/3/8 by zmyer
 public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
 
     private static final Object INCOMPLETE_SENTINEL = new Object();
@@ -182,6 +183,7 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
      * Add a listener which will be notified when the future completes
      * @param listener non-null listener to add
      */
+    // TODO: 2018/3/7 by zmyer
     public void addListener(RequestFutureListener<T> listener) {
         this.listeners.add(listener);
         if (failed())
@@ -196,6 +198,7 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
      * @param <S> The type of the future adapted to
      * @return The new future
      */
+    // TODO: 2018/3/7 by zmyer
     public <S> RequestFuture<S> compose(final RequestFutureAdapter<T, S> adapter) {
         final RequestFuture<S> adapted = new RequestFuture<>();
         addListener(new RequestFutureListener<T>() {

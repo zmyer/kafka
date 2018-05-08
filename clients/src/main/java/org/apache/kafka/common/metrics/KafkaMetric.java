@@ -20,6 +20,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.utils.Time;
 
+// TODO: 2018/3/8 by zmyer
 public final class KafkaMetric implements Metric {
 
     private MetricName metricName;

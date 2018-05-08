@@ -31,6 +31,7 @@ import java.util.Set;
 /**
  * A representation of a subset of the nodes, topics, and partitions in the Kafka cluster.
  */
+// TODO: 2018/3/5 by zmyer
 public final class Cluster {
 
     private final boolean isBootstrapConfigured;
@@ -148,6 +149,7 @@ public final class Cluster {
      * @param addresses The addresses
      * @return A cluster for these hosts/ports
      */
+    // TODO: 2018/3/8 by zmyer
     public static Cluster bootstrap(List<InetSocketAddress> addresses) {
         List<Node> nodes = new ArrayList<>();
         int nodeId = -1;
@@ -187,6 +189,7 @@ public final class Cluster {
      * @param topicPartition The topic and partition we want to know the leader for
      * @return The node that is the leader for this topic-partition, or null if there is currently no leader
      */
+    // TODO: 2018/3/5 by zmyer
     public Node leaderFor(TopicPartition topicPartition) {
         PartitionInfo info = partitionsByTopicPartition.get(topicPartition);
         if (info == null)
@@ -219,6 +222,7 @@ public final class Cluster {
      * @param topic The topic to get the number of partitions for
      * @return The number of partitions or null if there is no corresponding metadata
      */
+    // TODO: 2018/3/7 by zmyer
     public Integer partitionCountForTopic(String topic) {
         List<PartitionInfo> partitions = this.partitionsByTopic.get(topic);
         return partitions == null ? null : partitions.size();
@@ -229,6 +233,7 @@ public final class Cluster {
      * @param topic The topic name
      * @return A list of partitions
      */
+    // TODO: 2018/3/7 by zmyer
     public List<PartitionInfo> availablePartitionsForTopic(String topic) {
         List<PartitionInfo> parts = this.availablePartitionsByTopic.get(topic);
         return (parts == null) ? Collections.<PartitionInfo>emptyList() : parts;
@@ -239,6 +244,7 @@ public final class Cluster {
      * @param nodeId The node id
      * @return A list of partitions
      */
+    // TODO: 2018/3/5 by zmyer
     public List<PartitionInfo> partitionsForNode(int nodeId) {
         List<PartitionInfo> parts = this.partitionsByNode.get(nodeId);
         return (parts == null) ? Collections.<PartitionInfo>emptyList() : parts;

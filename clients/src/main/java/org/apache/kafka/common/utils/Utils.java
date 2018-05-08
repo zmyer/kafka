@@ -60,6 +60,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// TODO: 2018/3/5 by zmyer
 public final class Utils {
 
     private Utils() {}
@@ -730,6 +731,7 @@ public final class Utils {
     /**
      * Closes {@code closeable} and if an exception is thrown, it is logged at the WARN level.
      */
+    // TODO: 2018/3/9 by zmyer
     public static void closeQuietly(AutoCloseable closeable, String name) {
         if (closeable != null) {
             try {
@@ -753,6 +755,7 @@ public final class Utils {
      * @param number a given number
      * @return a positive number.
      */
+    // TODO: 2018/3/7 by zmyer
     public static int toPositive(int number) {
         return number & 0x7fffffff;
     }

@@ -29,6 +29,8 @@ import scala.collection._
 object ControllerEventManager {
   val ControllerEventThreadName = "controller-event-thread"
 }
+
+// TODO: by zmyer
 class ControllerEventManager(controllerId: Int, rateAndTimeMetrics: Map[ControllerState, KafkaTimer],
                              eventProcessedListener: ControllerEvent => Unit) {
 
@@ -55,6 +57,7 @@ class ControllerEventManager(controllerId: Int, rateAndTimeMetrics: Map[Controll
     queue.put(event)
   }
 
+  // TODO: by zmyer
   class ControllerEventThread(name: String) extends ShutdownableThread(name = name, isInterruptible = false) {
     logIdent = s"[ControllerEventThread controllerId=$controllerId] "
 

@@ -22,6 +22,7 @@ package org.apache.kafka.clients.consumer.internals;
  * @param <F> Type to adapt from
  * @param <T> Type to adapt to
  */
+// TODO: 2018/3/7 by zmyer
 public abstract class RequestFutureAdapter<F, T> {
 
     public abstract void onSuccess(F value, RequestFuture<T> future);

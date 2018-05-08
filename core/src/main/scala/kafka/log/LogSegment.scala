@@ -386,12 +386,17 @@ class LogSegment private[log] (val log: FileRecords,
   /**
    * Flush this log segment to disk
    */
+  // TODO: by zmyer
   @threadsafe
   def flush() {
     LogFlushStats.logFlushTimer.time {
+      //日志刷新
       log.flush()
+      //日志索引刷新
       offsetIndex.flush()
+      //定时索引刷新
       timeIndex.flush()
+      //事务索引刷新
       txnIndex.flush()
     }
   }
@@ -508,9 +513,11 @@ class LogSegment private[log] (val log: FileRecords,
   /**
    * Delete this log segment from the filesystem.
    */
+  // TODO: by zmyer
   def deleteIfExists() {
     def delete(delete: () => Boolean, fileType: String, file: File, logIfMissing: Boolean): Unit = {
       try {
+        //删除segment
         if (delete())
           info(s"Deleted $fileType ${file.getAbsolutePath}.")
         else if (logIfMissing)
@@ -522,9 +529,13 @@ class LogSegment private[log] (val log: FileRecords,
     }
 
     CoreUtils.tryAll(Seq(
+      //删除日志文件
       () => delete(log.deleteIfExists _, "log", log.file, logIfMissing = true),
+      //删除索引文件
       () => delete(offsetIndex.deleteIfExists _, "offset index", offsetIndex.file, logIfMissing = true),
+      //删除时间索引文件
       () => delete(timeIndex.deleteIfExists _, "time index", timeIndex.file, logIfMissing = true),
+      //删除事务索引文件
       () => delete(txnIndex.deleteIfExists _, "transaction index", txnIndex.file, logIfMissing = false)
     ))
   }

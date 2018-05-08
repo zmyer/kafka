@@ -28,9 +28,11 @@ case class BrokerMetadata(brokerId: Int)
 /**
   * This class saves broker's metadata to a file
   */
+// TODO: by zmyer
 class BrokerMetadataCheckpoint(val file: File) extends Logging {
   private val lock = new Object()
 
+  // TODO: by zmyer
   def write(brokerMetadata: BrokerMetadata) = {
     lock synchronized {
       try {
@@ -55,6 +57,7 @@ class BrokerMetadataCheckpoint(val file: File) extends Logging {
     }
   }
 
+  // TODO: by zmyer
   def read(): Option[BrokerMetadata] = {
     Files.deleteIfExists(new File(file + ".tmp").toPath()) // try to delete any existing temp files for cleanliness
 

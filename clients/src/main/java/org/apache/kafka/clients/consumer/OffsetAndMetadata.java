@@ -25,6 +25,7 @@ import java.io.Serializable;
  * when an offset is committed. This can be useful (for example) to store information about which
  * node made the commit, what time the commit was made, etc.
  */
+// TODO: 2018/3/5 by zmyer
 public class OffsetAndMetadata implements Serializable {
     private final long offset;
     private final String metadata;

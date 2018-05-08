@@ -27,11 +27,16 @@ import java.util.Map;
  * The state of our connection to each node in the cluster.
  *
  */
+// TODO: 2018/3/5 by zmyer
 final class ClusterConnectionStates {
+    //重连退避时间间隔
     private final long reconnectBackoffInitMs;
+    //重连退避最大时间间隔
     private final long reconnectBackoffMaxMs;
+    //重连退避因子
     private final static int RECONNECT_BACKOFF_EXP_BASE = 2;
     private final double reconnectBackoffMaxExp;
+    //节点连接状态表
     private final Map<String, NodeConnectionState> nodeState;
 
     public ClusterConnectionStates(long reconnectBackoffMs, long reconnectBackoffMaxMs) {
@@ -48,6 +53,7 @@ final class ClusterConnectionStates {
      * @param now the current time in ms
      * @return true if we can initiate a new connection
      */
+    // TODO: 2018/3/5 by zmyer
     public boolean canConnect(String id, long now) {
         NodeConnectionState state = nodeState.get(id);
         if (state == null)
@@ -62,6 +68,7 @@ final class ClusterConnectionStates {
      * @param id the connection to check
      * @param now the current time in ms
      */
+    // TODO: 2018/3/6 by zmyer
     public boolean isBlackedOut(String id, long now) {
         NodeConnectionState state = nodeState.get(id);
         if (state == null)
@@ -78,6 +85,7 @@ final class ClusterConnectionStates {
      * @param id the connection to check
      * @param now the current time in ms
      */
+    // TODO: 2018/3/5 by zmyer
     public long connectionDelay(String id, long now) {
         NodeConnectionState state = nodeState.get(id);
         if (state == null) return 0;
@@ -95,6 +103,7 @@ final class ClusterConnectionStates {
      * Return true if a specific connection establishment is currently underway
      * @param id The id of the node to check
      */
+    // TODO: 2018/3/6 by zmyer
     public boolean isConnecting(String id) {
         NodeConnectionState state = nodeState.get(id);
         return state != null && state.state == ConnectionState.CONNECTING;
@@ -105,6 +114,7 @@ final class ClusterConnectionStates {
      * @param id the id of the connection
      * @param now the current time
      */
+    // TODO: 2018/3/5 by zmyer
     public void connecting(String id, long now) {
         if (nodeState.containsKey(id)) {
             NodeConnectionState node = nodeState.get(id);
@@ -121,6 +131,7 @@ final class ClusterConnectionStates {
      * @param id the connection we have disconnected
      * @param now the current time
      */
+    // TODO: 2018/3/6 by zmyer
     public void disconnected(String id, long now) {
         NodeConnectionState nodeState = nodeState(id);
         nodeState.state = ConnectionState.DISCONNECTED;
@@ -132,6 +143,7 @@ final class ClusterConnectionStates {
      * Enter the checking_api_versions state for the given node.
      * @param id the connection identifier
      */
+    // TODO: 2018/3/6 by zmyer
     public void checkingApiVersions(String id) {
         NodeConnectionState nodeState = nodeState(id);
         nodeState.state = ConnectionState.CHECKING_API_VERSIONS;
@@ -141,6 +153,7 @@ final class ClusterConnectionStates {
      * Enter the ready state for the given node.
      * @param id the connection identifier
      */
+    // TODO: 2018/3/6 by zmyer
     public void ready(String id) {
         NodeConnectionState nodeState = nodeState(id);
         nodeState.state = ConnectionState.READY;
@@ -165,6 +178,7 @@ final class ClusterConnectionStates {
      * Return true if the connection is ready.
      * @param id the connection identifier
      */
+    // TODO: 2018/3/5 by zmyer
     public boolean isReady(String id) {
         NodeConnectionState state = nodeState.get(id);
         return state != null && state.state == ConnectionState.READY;
@@ -186,6 +200,7 @@ final class ClusterConnectionStates {
      * Return true if the connection has been disconnected
      * @param id The id of the node to check
      */
+    // TODO: 2018/3/5 by zmyer
     public boolean isDisconnected(String id) {
         NodeConnectionState state = nodeState.get(id);
         return state != null && state.state.isDisconnected();
@@ -206,6 +221,7 @@ final class ClusterConnectionStates {
      *
      * @param nodeState The node state object to update
      */
+    // TODO: 2018/3/6 by zmyer
     private void resetReconnectBackoff(NodeConnectionState nodeState) {
         nodeState.failedAttempts = 0;
         nodeState.reconnectBackoffMs = this.reconnectBackoffInitMs;
@@ -218,6 +234,7 @@ final class ClusterConnectionStates {
      *
      * @param nodeState The node state object to update
      */
+    // TODO: 2018/3/6 by zmyer
     private void updateReconnectBackoff(NodeConnectionState nodeState) {
         if (this.reconnectBackoffMaxMs > this.reconnectBackoffInitMs) {
             nodeState.failedAttempts += 1;
@@ -264,6 +281,7 @@ final class ClusterConnectionStates {
     /**
      * The state of our connection to a node.
      */
+    // TODO: 2018/3/5 by zmyer
     private static class NodeConnectionState {
 
         ConnectionState state;

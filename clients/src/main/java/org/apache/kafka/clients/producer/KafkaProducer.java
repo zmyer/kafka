@@ -228,6 +228,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
  * <code>UnsupportedVersionException</code> when invoking an API that is not available in the running broker version.
  * </p>
  */
+// TODO: 2018/3/5 by zmyer
 public class KafkaProducer<K, V> implements Producer<K, V> {
 
     private final Logger log;
@@ -235,26 +236,44 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private static final String JMX_PREFIX = "kafka.producer";
     public static final String NETWORK_THREAD_PREFIX = "kafka-producer-network-thread";
 
+    //客户端唯一标示
     private final String clientId;
     // Visible for testing
     final Metrics metrics;
+    //分区对象
     private final Partitioner partitioner;
+    //最大请求大小
     private final int maxRequestSize;
+    //内存总共大小
     private final long totalMemorySize;
+    //topic元数据信息
     private final Metadata metadata;
+    //消息聚合对象
     private final RecordAccumulator accumulator;
+    //消息发送任务
     private final Sender sender;
+    //io线程
     private final Thread ioThread;
+    //压缩类型
     private final CompressionType compressionType;
+    //发送错误信息
     private final Sensor errors;
     private final Time time;
+    //key序列化对象
     private final ExtendedSerializer<K> keySerializer;
+    //value序列化对象
     private final ExtendedSerializer<V> valueSerializer;
+    //生产者配置
     private final ProducerConfig producerConfig;
+    //最大阻塞时间
     private final long maxBlockTimeMs;
+    //请求发送超时时间
     private final int requestTimeoutMs;
+    //生产者拦截器列表
     private final ProducerInterceptors<K, V> interceptors;
+    //api版本号
     private final ApiVersions apiVersions;
+    //事务管理器
     private final TransactionManager transactionManager;
 
     /**
@@ -267,6 +286,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @param configs   The producer configs
      *
      */
+    // TODO: 2018/3/7 by zmyer
     public KafkaProducer(final Map<String, Object> configs) {
         this(new ProducerConfig(configs), null, null, null, null);
     }
@@ -284,6 +304,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @param valueSerializer  The serializer for value that implements {@link Serializer}. The configure() method won't
      *                         be called in the producer when the serializer is passed in directly.
      */
+    // TODO: 2018/3/7 by zmyer
     public KafkaProducer(Map<String, Object> configs, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
         this(new ProducerConfig(ProducerConfig.addSerializerToConfig(configs, keySerializer, valueSerializer)),
             keySerializer,
@@ -299,6 +320,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * Note: after creating a {@code KafkaProducer} you must always {@link #close()} it to avoid resource leaks.
      * @param properties   The producer configs
      */
+    // TODO: 2018/3/7 by zmyer
     public KafkaProducer(Properties properties) {
         this(new ProducerConfig(properties), null, null, null, null);
     }
@@ -314,11 +336,13 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @param valueSerializer  The serializer for value that implements {@link Serializer}. The configure() method won't
      *                         be called in the producer when the serializer is passed in directly.
      */
+    // TODO: 2018/3/7 by zmyer
     public KafkaProducer(Properties properties, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
         this(new ProducerConfig(ProducerConfig.addSerializerToConfig(properties, keySerializer, valueSerializer)),
                 keySerializer, valueSerializer, null, null);
     }
 
+    // TODO: 2018/3/7 by zmyer
     @SuppressWarnings("unchecked")
     // visible for testing
     KafkaProducer(ProducerConfig config,
@@ -491,6 +515,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return transactionManager;
     }
 
+    // TODO: 2018/3/5 by zmyer
     private static int configureRetries(ProducerConfig config, boolean idempotenceEnabled, Logger log) {
         boolean userConfiguredRetries = false;
         if (config.originals().containsKey(ProducerConfig.RETRIES_CONFIG)) {
@@ -509,6 +534,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return config.getInt(ProducerConfig.RETRIES_CONFIG);
     }
 
+    // TODO: 2018/3/5 by zmyer
     private static int configureInflightRequests(ProducerConfig config, boolean idempotenceEnabled) {
         if (idempotenceEnabled && 5 < config.getInt(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION)) {
             throw new ConfigException("Must set " + ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION + " to at most 5" +
@@ -517,6 +543,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return config.getInt(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION);
     }
 
+    // TODO: 2018/3/5 by zmyer
     private static short configureAcks(ProducerConfig config, boolean idempotenceEnabled, Logger log) {
         boolean userConfiguredAcks = false;
         short acks = (short) parseAcks(config.getString(ProducerConfig.ACKS_CONFIG));
@@ -536,6 +563,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return acks;
     }
 
+    // TODO: 2018/3/6 by zmyer
     private static int parseAcks(String acksString) {
         try {
             return acksString.trim().equalsIgnoreCase("all") ? -1 : Integer.parseInt(acksString.trim());
@@ -562,6 +590,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      *         transactional.id is not authorized. See the exception for more details
      * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
      */
+    // TODO: 2018/3/6 by zmyer
     public void initTransactions() {
         throwIfNoTransactionManager();
         TransactionalRequestResult result = transactionManager.initializeTransactions();
@@ -582,6 +611,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      *         transactional.id is not authorized. See the exception for more details
      * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
      */
+    // TODO: 2018/3/6 by zmyer
     public void beginTransaction() throws ProducerFencedException {
         throwIfNoTransactionManager();
         transactionManager.beginTransaction();
@@ -611,6 +641,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws KafkaException if the producer has encountered a previous fatal or abortable error, or for any
      *         other unexpected error
      */
+    // TODO: 2018/3/6 by zmyer
     public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
                                          String consumerGroupId) throws ProducerFencedException {
         throwIfNoTransactionManager();
@@ -635,6 +666,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws KafkaException if the producer has encountered a previous fatal or abortable error, or for any
      *         other unexpected error
      */
+    // TODO: 2018/3/6 by zmyer
     public void commitTransaction() throws ProducerFencedException {
         throwIfNoTransactionManager();
         TransactionalRequestResult result = transactionManager.beginCommit();
@@ -655,6 +687,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      *         transactional.id is not authorized. See the exception for more details
      * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
      */
+    // TODO: 2018/3/6 by zmyer
     public void abortTransaction() throws ProducerFencedException {
         throwIfNoTransactionManager();
         TransactionalRequestResult result = transactionManager.beginAbort();
@@ -666,6 +699,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * Asynchronously send a record to a topic. Equivalent to <code>send(record, null)</code>.
      * See {@link #send(ProducerRecord, Callback)} for details.
      */
+    // TODO: 2018/3/6 by zmyer
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
         return send(record, null);
@@ -777,6 +811,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws KafkaException If a Kafka related error occurs that does not belong to the public API exceptions.
      *
      */
+    // TODO: 2018/3/6 by zmyer
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
         // intercept the record, which can be potentially modified; this method does not throw exceptions
@@ -787,6 +822,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     /**
      * Implementation of asynchronously send a record to a topic.
      */
+    // TODO: 2018/3/6 by zmyer
     private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
         TopicPartition tp = null;
         try {
@@ -810,7 +846,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " to class " + producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in value.serializer", cce);
             }
+
+            //根据给定的key，计算投放到哪个分区
             int partition = partition(record, serializedKey, serializedValue, cluster);
+
+            //构造topic分区对象
             tp = new TopicPartition(record.topic(), partition);
 
             setReadOnly(record.headers());
@@ -827,6 +867,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             if (transactionManager != null && transactionManager.isTransactional())
                 transactionManager.maybeAddPartitionToTransaction(tp);
 
+            //将待发送的消息插入到消息聚合器中
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey,
                     serializedValue, headers, interceptCallback, remainingWaitMs);
             if (result.batchIsFull || result.newBatchCreated) {
@@ -864,6 +905,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         }
     }
 
+    // TODO: 2018/3/6 by zmyer
     private void setReadOnly(Headers headers) {
         if (headers instanceof RecordHeaders) {
             ((RecordHeaders) headers).setReadOnly();
@@ -877,6 +919,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @param maxWaitMs The maximum time in ms for waiting on the metadata
      * @return The cluster containing topic metadata and the amount of time we waited in ms
      */
+    // TODO: 2018/3/6 by zmyer
     private ClusterAndWaitTime waitOnMetadata(String topic, Integer partition, long maxWaitMs) throws InterruptedException {
         // add topic to metadata topic list if it is not there already and reset expiry
         metadata.add(topic);
@@ -898,13 +941,17 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             log.trace("Requesting metadata update for topic {}.", topic);
             metadata.add(topic);
             int version = metadata.requestUpdate();
+            //理解唤醒sender，立即开始发送消息
             sender.wakeup();
             try {
+                //等待获取元数据
                 metadata.awaitUpdate(version, remainingWaitMs);
             } catch (TimeoutException ex) {
                 // Rethrow with original maxWaitMs to prevent logging exception with remainingWaitMs
                 throw new TimeoutException("Failed to update metadata after " + maxWaitMs + " ms.");
             }
+
+            //获取集群信息
             cluster = metadata.fetch();
             elapsed = time.milliseconds() - begin;
             if (elapsed >= maxWaitMs)
@@ -926,6 +973,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     /**
      * Validate that the record size isn't too large
      */
+    // TODO: 2018/3/6 by zmyer
     private void ensureValidRecordSize(int size) {
         if (size > this.maxRequestSize)
             throw new RecordTooLargeException("The message is " + size +
@@ -973,6 +1021,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      *
      * @throws InterruptException If the thread is interrupted while blocked
      */
+    // TODO: 2018/3/6 by zmyer
     @Override
     public void flush() {
         log.trace("Flushing accumulated records in producer.");
@@ -992,6 +1041,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws InterruptException If the thread is interrupted while blocked
      * @throws TimeoutException if metadata could not be refreshed within {@code max.block.ms}
      */
+    // TODO: 2018/3/6 by zmyer
     @Override
     public List<PartitionInfo> partitionsFor(String topic) {
         Objects.requireNonNull(topic, "topic cannot be null");
@@ -1005,6 +1055,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     /**
      * Get the full set of internal metrics maintained by the producer.
      */
+    // TODO: 2018/3/6 by zmyer
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
         return Collections.unmodifiableMap(this.metrics.metrics());
@@ -1021,6 +1072,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      *
      * @throws InterruptException If the thread is interrupted while blocked
      */
+    // TODO: 2018/3/7 by zmyer
     @Override
     public void close() {
         close(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
@@ -1042,11 +1094,13 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws InterruptException If the thread is interrupted while blocked
      * @throws IllegalArgumentException If the <code>timeout</code> is negative.
      */
+    // TODO: 2018/3/7 by zmyer
     @Override
     public void close(long timeout, TimeUnit timeUnit) {
         close(timeout, timeUnit, false);
     }
 
+    // TODO: 2018/3/7 by zmyer
     private void close(long timeout, TimeUnit timeUnit, boolean swallowException) {
         if (timeout < 0)
             throw new IllegalArgumentException("The timeout cannot be negative.");
@@ -1062,6 +1116,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             } else {
                 // Try to close gracefully.
                 if (this.sender != null)
+                    //关闭sender
                     this.sender.initiateClose();
                 if (this.ioThread != null) {
                     try {
@@ -1119,6 +1174,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * if the record has partition returns the value otherwise
      * calls configured partitioner class to compute the partition.
      */
+    // TODO: 2018/3/7 by zmyer
     private int partition(ProducerRecord<K, V> record, byte[] serializedKey, byte[] serializedValue, Cluster cluster) {
         Integer partition = record.partition();
         return partition != null ?
@@ -1133,6 +1189,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     "by setting the " + ProducerConfig.TRANSACTIONAL_ID_CONFIG + " configuration property");
     }
 
+    // TODO: 2018/3/6 by zmyer
     private static class ClusterAndWaitTime {
         final Cluster cluster;
         final long waitedOnMetadataMs;
@@ -1181,6 +1238,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * A callback called when producer request is complete. It in turn calls user-supplied callback (if given) and
      * notifies producer interceptors about the request completion.
      */
+    // TODO: 2018/3/6 by zmyer
     private static class InterceptorCallback<K, V> implements Callback {
         private final Callback userCallback;
         private final ProducerInterceptors<K, V> interceptors;

@@ -21,10 +21,14 @@ import java.io.Serializable;
 /**
  * A topic name and partition number
  */
+// TODO: 2018/3/5 by zmyer
 public final class TopicPartition implements Serializable {
 
+    //topic分区对应的哈希值
     private int hash = 0;
+    //所属的分区
     private final int partition;
+    //所属的topic
     private final String topic;
 
     public TopicPartition(String topic, int partition) {

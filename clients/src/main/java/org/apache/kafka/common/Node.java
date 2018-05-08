@@ -19,6 +19,7 @@ package org.apache.kafka.common;
 /**
  * Information about a Kafka node
  */
+// TODO: 2018/3/5 by zmyer
 public class Node {
 
     private static final Node NO_NODE = new Node(-1, "", -1);

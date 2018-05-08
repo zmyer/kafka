@@ -24,6 +24,7 @@ import org.apache.kafka.common.requests.RequestHeader;
  * A response from the server. Contains both the body of the response as well as the correlated request
  * metadata that was originally sent.
  */
+// TODO: 2018/3/5 by zmyer
 public class ClientResponse {
 
     private final RequestHeader requestHeader;
@@ -46,6 +47,7 @@ public class ClientResponse {
      * @param responseBody The response contents (or null) if we disconnected, no response was expected,
      *                     or if there was a version mismatch.
      */
+    // TODO: 2018/3/6 by zmyer
     public ClientResponse(RequestHeader requestHeader,
                           RequestCompletionHandler callback,
                           String destination,

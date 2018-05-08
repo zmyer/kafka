@@ -64,6 +64,7 @@ case object PendingControlledShutdown extends BrokerStates { val state: Byte = 6
 case object BrokerShuttingDown extends BrokerStates { val state: Byte = 7 }
 
 
+// TODO: by zmyer
 case class BrokerState() {
   @volatile var currentState: Byte = NotRunning.state
 

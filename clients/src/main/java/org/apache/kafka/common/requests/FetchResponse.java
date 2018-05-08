@@ -50,6 +50,7 @@ import static org.apache.kafka.common.requests.FetchMetadata.INVALID_SESSION_ID;
 /**
  * This wrapper supports all versions of the Fetch API
  */
+// TODO: 2018/3/8 by zmyer
 public class FetchResponse extends AbstractResponse {
 
     private static final String RESPONSES_KEY_NAME = "responses";

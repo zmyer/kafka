@@ -24,6 +24,7 @@ import org.apache.kafka.common.header.Header;
  * A log record is a tuple consisting of a unique offset in the log, a sequence number assigned by
  * the producer, a timestamp, a key and a value.
  */
+// TODO: 2018/3/5 by zmyer
 public interface Record {
 
     Header[] EMPTY_HEADERS = new Header[0];

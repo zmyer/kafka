@@ -61,6 +61,7 @@ import static org.apache.kafka.common.record.RecordBatch.MAGIC_VALUE_V2;
  * The offset and timestamp deltas compute the difference relative to the base offset and
  * base timestamp of the batch that this record is contained in.
  */
+// TODO: 2018/3/5 by zmyer
 public class DefaultRecord implements Record {
 
     // excluding key, value and headers: 5 bytes length + 10 bytes timestamp + 5 bytes offset + 1 byte attributes
@@ -172,6 +173,7 @@ public class DefaultRecord implements Record {
     /**
      * Write the record to `out` and return its size.
      */
+    // TODO: 2018/3/5 by zmyer
     public static int writeTo(DataOutputStream out,
                               int offsetDelta,
                               long timestampDelta,
@@ -411,6 +413,7 @@ public class DefaultRecord implements Record {
         return bodySize + ByteUtils.sizeOfVarint(bodySize);
     }
 
+    // TODO: 2018/3/5 by zmyer
     private static int sizeOfBodyInBytes(int offsetDelta,
                                          long timestampDelta,
                                          ByteBuffer key,
@@ -422,6 +425,7 @@ public class DefaultRecord implements Record {
         return sizeOfBodyInBytes(offsetDelta, timestampDelta, keySize, valueSize, headers);
     }
 
+    // TODO: 2018/3/5 by zmyer
     private static int sizeOfBodyInBytes(int offsetDelta,
                                          long timestampDelta,
                                          int keySize,

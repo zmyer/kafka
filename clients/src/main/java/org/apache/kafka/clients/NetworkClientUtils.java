@@ -26,6 +26,7 @@ import java.util.List;
 /**
  * Provides additional utilities for {@link NetworkClient} (e.g. to implement blocking behaviour).
  */
+// TODO: 2018/3/7 by zmyer
 public final class NetworkClientUtils {
 
     private NetworkClientUtils() {}
@@ -37,6 +38,7 @@ public final class NetworkClientUtils {
      * This method can be used to check the status of a connection prior to calling the blocking version to be able
      * to tell whether the latter completed a new connection.
      */
+    // TODO: 2018/3/7 by zmyer
     public static boolean isReady(KafkaClient client, Node node, long currentTime) {
         client.poll(0, currentTime);
         return client.isReady(node, currentTime);
@@ -54,6 +56,7 @@ public final class NetworkClientUtils {
      * This method is useful for implementing blocking behaviour on top of the non-blocking `NetworkClient`, use it with
      * care.
      */
+    // TODO: 2018/3/7 by zmyer
     public static boolean awaitReady(KafkaClient client, Node node, Time time, long timeoutMs) throws IOException {
         if (timeoutMs < 0) {
             throw new IllegalArgumentException("Timeout needs to be greater than 0");
@@ -87,9 +90,11 @@ public final class NetworkClientUtils {
      * This method is useful for implementing blocking behaviour on top of the non-blocking `NetworkClient`, use it with
      * care.
      */
+    // TODO: 2018/3/7 by zmyer
     public static ClientResponse sendAndReceive(KafkaClient client, ClientRequest request, Time time) throws IOException {
         client.send(request, time.milliseconds());
         while (true) {
+            //阻塞式等待
             List<ClientResponse> responses = client.poll(Long.MAX_VALUE, time.milliseconds());
             for (ClientResponse response : responses) {
                 if (response.requestHeader().correlationId() == request.correlationId()) {

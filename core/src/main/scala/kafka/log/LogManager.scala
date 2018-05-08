@@ -46,6 +46,7 @@ import scala.collection.mutable.ArrayBuffer
  *
  * A background thread handles log retention by periodically truncating excess log segments.
  */
+// TODO: by zmyer
 @threadsafe
 class LogManager(logDirs: Seq[File],
                  initialOfflineDirs: Seq[File],
@@ -140,6 +141,7 @@ class LogManager(logDirs: Seq[File],
    * <li> Check that each path is a readable directory
    * </ol>
    */
+  // TODO: zmyer 
   private def createAndValidateLogDirs(dirs: Seq[File], initialOfflineDirs: Seq[File]): ConcurrentLinkedQueue[File] = {
     if(dirs.map(_.getCanonicalPath).toSet.size < dirs.size)
       throw new KafkaException("Duplicate log directory found: " + dirs.mkString(", "))
@@ -372,37 +374,44 @@ class LogManager(logDirs: Seq[File],
   /**
    *  Start the background threads to flush logs and do log cleanup
    */
+  // TODO: by zmyer
   def startup() {
     /* Schedule the cleanup task to delete old logs */
     if (scheduler != null) {
       info("Starting log cleanup with a period of %d ms.".format(retentionCheckMs))
+      //启动日志滚动
       scheduler.schedule("kafka-log-retention",
                          cleanupLogs _,
                          delay = InitialTaskDelayMs,
                          period = retentionCheckMs,
                          TimeUnit.MILLISECONDS)
       info("Starting log flusher with a default period of %d ms.".format(flushCheckMs))
+      //启动日志刷新
       scheduler.schedule("kafka-log-flusher",
                          flushDirtyLogs _,
                          delay = InitialTaskDelayMs,
                          period = flushCheckMs,
                          TimeUnit.MILLISECONDS)
+      //启动日志恢复点检查
       scheduler.schedule("kafka-recovery-point-checkpoint",
                          checkpointLogRecoveryOffsets _,
                          delay = InitialTaskDelayMs,
                          period = flushRecoveryOffsetCheckpointMs,
                          TimeUnit.MILLISECONDS)
+      //启动日志开始偏移量检查
       scheduler.schedule("kafka-log-start-offset-checkpoint",
                          checkpointLogStartOffsets _,
                          delay = InitialTaskDelayMs,
                          period = flushStartOffsetCheckpointMs,
                          TimeUnit.MILLISECONDS)
+      //启动删除日志
       scheduler.schedule("kafka-delete-logs", // will be rescheduled after each delete logs with a dynamic period
                          deleteLogs _,
                          delay = InitialTaskDelayMs,
                          unit = TimeUnit.MILLISECONDS)
     }
     if (cleanerConfig.enableCleaner)
+      //启动清理线程
       cleaner.startup()
   }
 
@@ -542,6 +551,7 @@ class LogManager(logDirs: Seq[File],
    * Write out the current recovery point for all logs to a text file in the log directory
    * to avoid recovering the whole log on startup.
    */
+  // TODO: by zmyer
   def checkpointLogRecoveryOffsets() {
     liveLogDirs.foreach(checkpointLogRecoveryOffsetsInDir)
   }
@@ -557,6 +567,7 @@ class LogManager(logDirs: Seq[File],
   /**
    * Make a checkpoint for all logs in provided directory.
    */
+  // TODO: by zmyer
   private def checkpointLogRecoveryOffsetsInDir(dir: File): Unit = {
     for {
       partitionToLog <- logsByDir.get(dir.getAbsolutePath)
@@ -613,6 +624,7 @@ class LogManager(logDirs: Seq[File],
    * @param topicPartition the partition of the log
    * @param isFuture True iff the future log of the specified partition should be returned
    */
+  // TODO: by zmyer
   def getLog(topicPartition: TopicPartition, isFuture: Boolean = false): Option[Log] = {
     if (isFuture)
       Option(futureLogs.get(topicPartition))
@@ -789,6 +801,7 @@ class LogManager(logDirs: Seq[File],
     * @param isFuture True iff the future log of the specified partition should be deleted
     * @return the removed log
     */
+  // TODO: by zmyer
   def asyncDelete(topicPartition: TopicPartition, isFuture: Boolean = false): Log = {
     val removedLog: Log = logCreationOrDeletionLock synchronized {
       if (isFuture)
@@ -837,12 +850,14 @@ class LogManager(logDirs: Seq[File],
    * Delete any eligible logs. Return the number of segments deleted.
    * Only consider logs that are not compacted.
    */
+  // TODO: by zmyer
   def cleanupLogs() {
     debug("Beginning log cleanup...")
     var total = 0
     val startMs = time.milliseconds
     for(log <- allLogs; if !log.config.compact) {
       debug("Garbage collecting '" + log.name + "'")
+      //删除指定的logsegment
       total += log.deleteOldSegments()
     }
     debug("Log cleanup completed. " + total + " files deleted in " +
@@ -881,6 +896,7 @@ class LogManager(logDirs: Seq[File],
   /**
    * Flush any log which has exceeded its flush interval and has unwritten messages.
    */
+  // TODO: by zmyer
   private def flushDirtyLogs(): Unit = {
     debug("Checking for dirty logs to flush...")
 
@@ -890,6 +906,7 @@ class LogManager(logDirs: Seq[File],
         debug("Checking if flush is needed on " + topicPartition.topic + " flush interval  " + log.config.flushMs +
               " last flushed " + log.lastFlushTime + " time since last flush: " + timeSinceLastFlush)
         if(timeSinceLastFlush >= log.config.flushMs)
+          //开始刷新日志
           log.flush
       } catch {
         case e: Throwable =>
@@ -899,6 +916,7 @@ class LogManager(logDirs: Seq[File],
   }
 }
 
+// TODO: by zmyer
 object LogManager {
 
   val RecoveryPointCheckpointFile = "recovery-point-offset-checkpoint"

@@ -36,6 +36,7 @@ import scala.collection.mutable
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
+// TODO: by zmyer
 object RequestChannel extends Logging {
   private val requestLogger = Logger("kafka.request.logger")
 
@@ -46,6 +47,8 @@ object RequestChannel extends Logging {
   def isRequestLoggingEnabled: Boolean = requestLogger.underlying.isDebugEnabled
 
   sealed trait BaseRequest
+
+  // TODO: by zmyer
   case object ShutdownRequest extends BaseRequest
 
   case class Session(principal: KafkaPrincipal, clientAddress: InetAddress) {
@@ -68,6 +71,7 @@ object RequestChannel extends Logging {
     }
   }
 
+  // TODO: by zmyer
   class Request(val processor: Int,
                 val context: RequestContext,
                 val startTimeNanos: Long,
@@ -226,6 +230,7 @@ object RequestChannel extends Logging {
   }
 
   /** responseAsString should only be defined if request logging is enabled */
+  // TODO: by zmyer
   class Response(val request: Request, val responseSend: Option[Send], val responseAction: ResponseAction,
                  val responseAsString: Option[String]) {
     request.responseCompleteTimeNanos = Time.SYSTEM.nanoseconds
@@ -243,10 +248,13 @@ object RequestChannel extends Logging {
   case object CloseConnectionAction extends ResponseAction
 }
 
+// TODO: by zmyer
 class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
   import RequestChannel._
   val metrics = new RequestChannel.Metrics
+  //请求队列
   private val requestQueue = new ArrayBlockingQueue[BaseRequest](queueSize)
+  //processor集合
   private val processors = new ConcurrentHashMap[Int, Processor]()
 
   newGauge(RequestQueueSizeMetric, new Gauge[Int] {
@@ -259,7 +267,9 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
     }
   })
 
+  // TODO: by zmyer
   def addProcessor(processor: Processor): Unit = {
+    //将processor线程插入到集合中
     if (processors.putIfAbsent(processor.id, processor) != null)
       warn(s"Unexpected processor with processorId ${processor.id}")
 
@@ -271,17 +281,21 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
     )
   }
 
+  // TODO: by zmyer
   def removeProcessor(processorId: Int): Unit = {
     processors.remove(processorId)
     removeMetric(ResponseQueueSizeMetric, Map(ProcessorMetricTag -> processorId.toString))
   }
 
+  // TODO: by zmyer
   /** Send a request to be handled, potentially blocking until there is room in the queue for the request */
   def sendRequest(request: RequestChannel.Request) {
+    //将待发送的请求插入到发送列表中
     requestQueue.put(request)
   }
 
   /** Send a response back to the socket server to be sent over the network */
+  // TODO: by zmyer
   def sendResponse(response: RequestChannel.Response) {
     if (isTraceEnabled) {
       val requestHeader = response.request.header
@@ -296,15 +310,18 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
       trace(message)
     }
 
+    //获取指定的processor线程来处理改应答
     val processor = processors.get(response.processor)
     // The processor may be null if it was shutdown. In this case, the connections
     // are closed, so the response is dropped.
     if (processor != null) {
+      //将收到的应答插入到指定的processor接收队列中
       processor.enqueueResponse(response)
     }
   }
 
   /** Get the next request or block until specified time has elapsed */
+  // TODO: by zmyer
   def receiveRequest(timeout: Long): RequestChannel.BaseRequest =
     requestQueue.poll(timeout, TimeUnit.MILLISECONDS)
 
@@ -318,6 +335,7 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
     }
   }
 
+  // TODO: by zmyer
   def clear() {
     requestQueue.clear()
   }
@@ -327,10 +345,12 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
     metrics.close()
   }
 
+  //向请求队列中插入关闭channel请求
   def sendShutdownRequest(): Unit = requestQueue.put(ShutdownRequest)
 
 }
 
+// TODO: by zmyer
 object RequestMetrics {
   val consumerFetchMetricName = ApiKeys.FETCH.name + "Consumer"
   val followFetchMetricName = ApiKeys.FETCH.name + "Follower"
@@ -349,6 +369,7 @@ object RequestMetrics {
   val ErrorsPerSec = "ErrorsPerSec"
 }
 
+// TODO: by zmyer
 class RequestMetrics(name: String) extends KafkaMetricsGroup {
   import RequestMetrics._
 

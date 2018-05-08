@@ -32,6 +32,7 @@ import static org.apache.kafka.common.protocol.CommonFields.THROTTLE_TIME_MS;
 import static org.apache.kafka.common.protocol.types.Type.INT32;
 import static org.apache.kafka.common.protocol.types.Type.STRING;
 
+// TODO: 2018/3/7 by zmyer
 public class FindCoordinatorResponse extends AbstractResponse {
     private static final String COORDINATOR_KEY_NAME = "coordinator";
 

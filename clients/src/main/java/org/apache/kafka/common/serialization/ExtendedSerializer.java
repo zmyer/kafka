@@ -30,6 +30,7 @@ import org.apache.kafka.common.header.Headers;
  * A class that implements this interface is expected to have a constructor with no parameters.
  * @param <T>
  */
+// TODO: 2018/3/5 by zmyer
 public interface ExtendedSerializer<T> extends Serializer<T> {
 
     /**

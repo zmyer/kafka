@@ -24,7 +24,7 @@ import java.io.Closeable;
 /**
  * Partitioner Interface
  */
-
+// TODO: 2018/3/5 by zmyer
 public interface Partitioner extends Configurable, Closeable {
 
     /**

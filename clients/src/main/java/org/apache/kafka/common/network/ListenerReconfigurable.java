@@ -21,6 +21,7 @@ import org.apache.kafka.common.Reconfigurable;
 /**
  * Interface for reconfigurable entities associated with a listener.
  */
+// TODO: 2018/3/5 by zmyer
 public interface ListenerReconfigurable extends Reconfigurable {
 
     /**

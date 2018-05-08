@@ -24,6 +24,7 @@ import java.util.Set;
  * A thread-safe helper class to hold batches that haven't been acknowledged yet (including those
  * which have and have not been sent).
  */
+// TODO: 2018/3/5 by zmyer
 class IncompleteBatches {
     private final Set<ProducerBatch> incomplete;
 

@@ -29,8 +29,10 @@ import org.apache.kafka.common.utils.{OperatingSystem, Utils}
 
 import scala.collection.JavaConverters._
 
+// TODO: by zmyer
 object Kafka extends Logging {
 
+  // TODO: by zmyer
   def getPropsFromArgs(args: Array[String]): Properties = {
     val optionParser = new OptionParser(false)
     val overrideOpt = optionParser.accepts("override", "Optional property that should override values set in server.properties file")
@@ -55,6 +57,7 @@ object Kafka extends Logging {
     props
   }
 
+  // TODO: by zmyer
   private def registerLoggingSignalHandler(): Unit = {
     val jvmSignalHandlers = new ConcurrentHashMap[String, SignalHandler]().asScala
     val handler = new SignalHandler() {
@@ -69,6 +72,7 @@ object Kafka extends Logging {
         jvmSignalHandlers.put(signalName, oldHandler)
     }
 
+    //注入主要的信号
     if (!OperatingSystem.IS_WINDOWS) {
       registerHandler("TERM")
       registerHandler("INT")
@@ -76,20 +80,27 @@ object Kafka extends Logging {
     }
   }
 
+  // TODO: by zmyer
   def main(args: Array[String]): Unit = {
     try {
+      //服务器配置
       val serverProps = getPropsFromArgs(args)
+      //创建服务器启动对象
       val kafkaServerStartable = KafkaServerStartable.fromProps(serverProps)
 
       // register signal handler to log termination due to SIGTERM, SIGHUP and SIGINT (control-c)
+      //注册信号处理句柄
       registerLoggingSignalHandler()
 
       // attach shutdown handler to catch terminating signals as well as normal termination
+      //设置服务器关闭函数
       Runtime.getRuntime().addShutdownHook(new Thread("kafka-shutdown-hook") {
         override def run(): Unit = kafkaServerStartable.shutdown()
       })
 
+      //启动服务器
       kafkaServerStartable.startup()
+      //等待kafka服务器关闭
       kafkaServerStartable.awaitShutdown()
     }
     catch {

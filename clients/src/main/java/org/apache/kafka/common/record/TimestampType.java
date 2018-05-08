@@ -21,6 +21,7 @@ import java.util.NoSuchElementException;
 /**
  * The timestamp type of the records.
  */
+// TODO: 2018/3/5 by zmyer
 public enum TimestampType {
     NO_TIMESTAMP_TYPE(-1, "NoTimestampType"), CREATE_TIME(0, "CreateTime"), LOG_APPEND_TIME(1, "LogAppendTime");
 

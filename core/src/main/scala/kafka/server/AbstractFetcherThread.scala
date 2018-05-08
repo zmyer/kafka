@@ -42,6 +42,7 @@ import org.apache.kafka.common.requests.EpochEndOffset
 /**
  *  Abstract class for fetching data from multiple partitions from the same broker.
  */
+// TODO: by zmyer
 abstract class AbstractFetcherThread(name: String,
                                      clientId: String,
                                      val sourceBroker: BrokerEndPoint,

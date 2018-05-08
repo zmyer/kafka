@@ -44,6 +44,7 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
  * In either of the cases above, the timestamp that has actually been used will be returned to user in
  * {@link RecordMetadata}
  */
+// TODO: 2018/3/5 by zmyer
 public class ProducerRecord<K, V> {
 
     private final String topic;

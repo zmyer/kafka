@@ -198,6 +198,7 @@ public class FetchRequest extends AbstractRequest {
     private final List<TopicPartition> toForget;
     private final FetchMetadata metadata;
 
+    // TODO: 2018/3/8 by zmyer
     public static final class PartitionData {
         public final long fetchOffset;
         public final long logStartOffset;

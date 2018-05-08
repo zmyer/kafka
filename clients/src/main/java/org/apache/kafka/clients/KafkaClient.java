@@ -26,6 +26,7 @@ import java.util.List;
 /**
  * The interface for {@link NetworkClient}
  */
+// TODO: 2018/3/5 by zmyer
 public interface KafkaClient extends Closeable {
 
     /**
@@ -147,6 +148,7 @@ public interface KafkaClient extends Closeable {
     /**
      * Return true if there is at least one node with connection in ready state and false otherwise.
      */
+
     boolean hasReadyNodes();
 
     /**
@@ -174,6 +176,7 @@ public interface KafkaClient extends Closeable {
      * @param expectResponse true iff we expect a response
      * @param callback the callback to invoke when we get a response
      */
+    // TODO: 2018/3/8 by zmyer
     ClientRequest newClientRequest(String nodeId, AbstractRequest.Builder<?> requestBuilder, long createdTimeMs,
                                    boolean expectResponse, RequestCompletionHandler callback);
 

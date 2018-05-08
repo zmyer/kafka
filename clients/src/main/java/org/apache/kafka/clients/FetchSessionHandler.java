@@ -52,6 +52,7 @@ import static org.apache.kafka.common.requests.FetchMetadata.INVALID_SESSION_ID;
  * the attached fetch session metadata should be for each request.  The corresponding
  * class on the receiving broker side is FetchManager.
  */
+// TODO: 2018/3/8 by zmyer
 public class FetchSessionHandler {
     private final Logger log;
 
@@ -73,6 +74,7 @@ public class FetchSessionHandler {
     private LinkedHashMap<TopicPartition, PartitionData> sessionPartitions =
         new LinkedHashMap<>(0);
 
+    // TODO: 2018/3/8 by zmyer
     public static class FetchRequestData {
         /**
          * The partitions to send in the fetch request.
@@ -121,6 +123,7 @@ public class FetchSessionHandler {
         /**
          * Get the full set of partitions involved in this fetch request.
          */
+        // TODO: 2018/3/8 by zmyer
         public Map<TopicPartition, PartitionData> sessionPartitions() {
             return sessionPartitions;
         }

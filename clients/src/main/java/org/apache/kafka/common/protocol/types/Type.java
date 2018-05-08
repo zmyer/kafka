@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 /**
  * A serializable type
  */
+// TODO: 2018/3/6 by zmyer
 public abstract class Type {
 
     /**

@@ -93,6 +93,7 @@ import static org.apache.kafka.common.record.Records.LOG_OVERHEAD;
  *  | Unused (6-15) | Control (5) | Transactional (4) | Timestamp Type (3) | Compression Type (0-2) |
  *  -------------------------------------------------------------------------------------------------
  */
+// TODO: 2018/3/5 by zmyer
 public class DefaultRecordBatch extends AbstractRecordBatch implements MutableRecordBatch {
     static final int BASE_OFFSET_OFFSET = 0;
     static final int BASE_OFFSET_LENGTH = 8;
@@ -429,6 +430,7 @@ public class DefaultRecordBatch extends AbstractRecordBatch implements MutableRe
                 producerEpoch, baseSequence, isTransactional, isControlRecord, partitionLeaderEpoch, 0);
     }
 
+    // TODO: 2018/3/5 by zmyer
     static void writeHeader(ByteBuffer buffer,
                             long baseOffset,
                             int lastOffsetDelta,

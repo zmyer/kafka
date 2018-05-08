@@ -47,6 +47,7 @@ import static org.apache.kafka.common.protocol.types.Type.INT16;
 import static org.apache.kafka.common.protocol.types.Type.INT32;
 import static org.apache.kafka.common.protocol.types.Type.RECORDS;
 
+// TODO: 2018/3/6 by zmyer
 public class ProduceRequest extends AbstractRequest {
     private static final String ACKS_KEY_NAME = "acks";
     private static final String TIMEOUT_KEY_NAME = "timeout";

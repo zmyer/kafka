@@ -25,6 +25,7 @@ import org.apache.kafka.common.Configurable;
  * <p>
  * Implement {@link org.apache.kafka.common.ClusterResourceListener} to receive cluster metadata once it's available. Please see the class documentation for ClusterResourceListener for more information.
  */
+// TODO: 2018/3/5 by zmyer
 public interface MetricsReporter extends Configurable {
 
     /**

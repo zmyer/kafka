@@ -21,6 +21,7 @@ import org.apache.kafka.common.TopicPartition;
 
 import java.util.Collection;
 
+// TODO: 2018/3/7 by zmyer
 public class NoOpConsumerRebalanceListener implements ConsumerRebalanceListener {
 
     @Override

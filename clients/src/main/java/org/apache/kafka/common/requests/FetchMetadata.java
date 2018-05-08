@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
+// TODO: 2018/3/8 by zmyer
 public class FetchMetadata {
     public static final Logger log = LoggerFactory.getLogger(FetchMetadata.class);
 

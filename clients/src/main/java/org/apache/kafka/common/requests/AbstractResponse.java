@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+// TODO: 2018/3/6 by zmyer
 public abstract class AbstractResponse extends AbstractRequestResponse {
     public static final int DEFAULT_THROTTLE_TIME = 0;
 
@@ -68,6 +69,7 @@ public abstract class AbstractResponse extends AbstractRequestResponse {
 
     protected abstract Struct toStruct(short version);
 
+    // TODO: 2018/3/6 by zmyer
     public static AbstractResponse parseResponse(ApiKeys apiKey, Struct struct) {
         switch (apiKey) {
             case PRODUCE:

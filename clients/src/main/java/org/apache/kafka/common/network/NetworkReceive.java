@@ -16,18 +16,20 @@
  */
 package org.apache.kafka.common.network;
 
+import org.apache.kafka.common.memory.MemoryPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.ScatteringByteChannel;
-import org.apache.kafka.common.memory.MemoryPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A size delimited Receive that consists of a 4 byte network-ordered size N followed by N bytes of content
  */
+// TODO: 2018/3/5 by zmyer
 public class NetworkReceive implements Receive {
 
     public final static String UNKNOWN_SOURCE = "";
@@ -79,6 +81,7 @@ public class NetworkReceive implements Receive {
         this(UNKNOWN_SOURCE);
     }
 
+    // TODO: 2018/3/13 by zmyer
     @Override
     public String source() {
         return source;
@@ -120,31 +123,39 @@ public class NetworkReceive implements Receive {
         int read = 0;
         if (size.hasRemaining()) {
             int bytesRead = channel.read(size);
-            if (bytesRead < 0)
+            if (bytesRead < 0) {
                 throw new EOFException();
+            }
             read += bytesRead;
             if (!size.hasRemaining()) {
                 size.rewind();
                 int receiveSize = size.getInt();
-                if (receiveSize < 0)
+                if (receiveSize < 0) {
                     throw new InvalidReceiveException("Invalid receive (size = " + receiveSize + ")");
-                if (maxSize != UNLIMITED && receiveSize > maxSize)
-                    throw new InvalidReceiveException("Invalid receive (size = " + receiveSize + " larger than " + maxSize + ")");
+                }
+                if (maxSize != UNLIMITED && receiveSize > maxSize) {
+                    throw new InvalidReceiveException(
+                            "Invalid receive (size = " + receiveSize + " larger than " + maxSize + ")");
+                }
                 requestedBufferSize = receiveSize; //may be 0 for some payloads (SASL)
                 if (receiveSize == 0) {
                     buffer = EMPTY_BUFFER;
                 }
             }
         }
-        if (buffer == null && requestedBufferSize != -1) { //we know the size we want but havent been able to allocate it yet
+        if (buffer == null &&
+                requestedBufferSize != -1) { //we know the size we want but havent been able to allocate it yet
             buffer = memoryPool.tryAllocate(requestedBufferSize);
-            if (buffer == null)
-                log.trace("Broker low on memory - could not allocate buffer of size {} for source {}", requestedBufferSize, source);
+            if (buffer == null) {
+                log.trace("Broker low on memory - could not allocate buffer of size {} for source {}",
+                        requestedBufferSize, source);
+            }
         }
         if (buffer != null) {
             int bytesRead = channel.read(buffer);
-            if (bytesRead < 0)
+            if (bytesRead < 0) {
                 throw new EOFException();
+            }
             read += bytesRead;
         }
 

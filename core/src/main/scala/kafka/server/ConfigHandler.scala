@@ -38,6 +38,7 @@ import scala.collection.JavaConverters._
 /**
   * The ConfigHandler is used to process config change notifications received by the DynamicConfigManager
   */
+// TODO: by zmyer
 trait ConfigHandler {
   def processConfigChanges(entityName: String, value: Properties)
 }

@@ -20,6 +20,7 @@ package org.apache.kafka.clients.producer;
  * A callback interface that the user can implement to allow code to execute when the request is complete. This callback
  * will generally execute in the background I/O thread so it should be fast.
  */
+// TODO: 2018/3/5 by zmyer
 public interface Callback {
 
     /**
@@ -49,5 +50,6 @@ public interface Callback {
      *                  TimeoutException
      *                  UnknownTopicOrPartitionException
      */
+    // TODO: 2018/3/5 by zmyer
     public void onCompletion(RecordMetadata metadata, Exception exception);
 }

@@ -154,6 +154,7 @@ object DelegationTokenManager {
   }
 }
 
+// TODO: by zmyer
 class DelegationTokenManager(val config: KafkaConfig,
                              val tokenCache: DelegationTokenCache,
                              val time: Time,

@@ -37,6 +37,7 @@ import java.util.Set;
  * userData in the returned Subscription. For example, to have a rack-aware assignor, an implementation
  * can use this user data to forward the rackId belonging to each member.
  */
+// TODO: 2018/3/7 by zmyer
 public interface PartitionAssignor {
 
     /**
@@ -72,6 +73,7 @@ public interface PartitionAssignor {
      */
     String name();
 
+    // TODO: 2018/3/8 by zmyer
     class Subscription {
         private final List<String> topics;
         private final ByteBuffer userData;
@@ -101,6 +103,7 @@ public interface PartitionAssignor {
         }
     }
 
+    // TODO: 2018/3/8 by zmyer
     class Assignment {
         private final List<TopicPartition> partitions;
         private final ByteBuffer userData;

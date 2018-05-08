@@ -150,8 +150,10 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
   /**
    * Flush the data in the index to disk
    */
+  // TODO: by zmyer
   def flush() {
     inLock(lock) {
+      //map内存刷新
       mmap.force()
     }
   }
@@ -163,14 +165,17 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
    * @return `true` if the file was deleted by this method; `false` if the file could not be deleted because it did
    *         not exist
    */
+  // TODO: by zmyer
   def deleteIfExists(): Boolean = {
     inLock(lock) {
       // On JVM, a memory mapping is typically unmapped by garbage collector.
       // However, in some cases it can pause application threads(STW) for a long moment reading metadata from a physical disk.
       // To prevent this, we forcefully cleanup memory mapping within proper execution which never affects API responsiveness.
       // See https://issues.apache.org/jira/browse/KAFKA-4614 for the details.
+      //强行释放掉map空间
       safeForceUnmap()
     }
+    //直接删除文件
     Files.deleteIfExists(file.toPath)
   }
 
@@ -226,6 +231,7 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
     resize(maxIndexSize)
   }
 
+  // TODO: by zmyer
   protected def safeForceUnmap(): Unit = {
     try forceUnmap()
     catch {
@@ -236,7 +242,9 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
   /**
    * Forcefully free the buffer's mmap.
    */
+  // TODO: by zmyer
   protected[log] def forceUnmap() {
+    //强行释放掉map空间
     try MappedByteBuffers.unmap(file.getAbsolutePath, mmap)
     finally mmap = null // Accessing unmapped mmap crashes JVM by SEGV so we null it out to be safe
   }

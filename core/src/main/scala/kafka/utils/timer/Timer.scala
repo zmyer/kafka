@@ -51,6 +51,7 @@ trait Timer {
   def shutdown(): Unit
 }
 
+// TODO: by zmyer
 @threadsafe
 class SystemTimer(executorName: String,
                   tickMs: Long = 1,

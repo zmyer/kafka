@@ -19,6 +19,7 @@ package org.apache.kafka.clients.producer.internals;
 import static org.apache.kafka.common.record.RecordBatch.NO_PRODUCER_EPOCH;
 import static org.apache.kafka.common.record.RecordBatch.NO_PRODUCER_ID;
 
+// TODO: 2018/3/5 by zmyer
 class ProducerIdAndEpoch {
     static final ProducerIdAndEpoch NONE = new ProducerIdAndEpoch(NO_PRODUCER_ID, NO_PRODUCER_EPOCH);
 

@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: 2018/3/9 by zmyer
 public class DelegationTokenCache {
 
     private CredentialCache credentialCache = new CredentialCache();

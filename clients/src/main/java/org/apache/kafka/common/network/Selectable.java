@@ -25,6 +25,7 @@ import java.util.Map;
 /**
  * An interface for asynchronous, multi-channel network I/O
  */
+// TODO: 2018/3/5 by zmyer
 public interface Selectable {
 
     /**
@@ -40,6 +41,7 @@ public interface Selectable {
      * @param receiveBufferSize The receive buffer for the socket
      * @throws IOException If we cannot begin connecting
      */
+    // TODO: 2018/3/5 by zmyer
     public void connect(String id, InetSocketAddress address, int sendBufferSize, int receiveBufferSize) throws IOException;
 
     /**

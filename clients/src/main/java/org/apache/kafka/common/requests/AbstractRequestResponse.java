@@ -20,6 +20,7 @@ import org.apache.kafka.common.protocol.types.Struct;
 
 import java.nio.ByteBuffer;
 
+// TODO: 2018/3/6 by zmyer
 public abstract class AbstractRequestResponse {
     /**
      * Visible for testing.
